@@ -1,0 +1,6 @@
+{
+  "name": "OpenCourse - Best Free Courses Online",
+  "description": "bagiilmu.id - Platform kurasi kursus online gratis dan berkualitas dari universitas dunia tanpa biaya tersembunyi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
