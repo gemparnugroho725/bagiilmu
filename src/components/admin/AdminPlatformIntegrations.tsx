@@ -99,11 +99,20 @@ const INITIAL_CONNECTORS: IntegrationConnector[] = [
 
 interface AdminPlatformIntegrationsProps {
   showToastNotification: (msg: string) => void;
+  platformOptions?: string[];
+  onAddPlatformOption?: (name: string) => void;
+  onDeletePlatformOption?: (name: string) => void;
+  onResetPlatformOptions?: () => void;
 }
 
 export const AdminPlatformIntegrations: React.FC<AdminPlatformIntegrationsProps> = ({
   showToastNotification,
+  platformOptions = [],
+  onAddPlatformOption,
+  onDeletePlatformOption,
+  onResetPlatformOptions,
 }) => {
+  const [newPlatformInput, setNewPlatformInput] = useState('');
   const [connectors, setConnectors] = useState<IntegrationConnector[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -337,6 +346,95 @@ export const AdminPlatformIntegrations: React.FC<AdminPlatformIntegrationsProps>
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Master Platform Options Management Card */}
+      <div className="bg-[#0d0d0d] p-6 sm:p-8 rounded-2xl border border-white/15 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-black uppercase tracking-wider">
+                Source Platform Library
+              </span>
+              <span className="text-zinc-500 text-xs">•</span>
+              <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider">
+                {platformOptions.length} Platform Sumber Terdaftar
+              </span>
+            </div>
+            <h3 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-blue-400 text-[22px]">hub</span>
+              <span>Pustaka Platform Sumber (Master Dropdown)</span>
+            </h3>
+            <p className="text-xs text-zinc-400 font-normal mt-0.5">
+              Tambah platform edukasi baru atau hapus platform yang tidak relevan dari pilihan dropdown formulir kurasi.
+            </p>
+          </div>
+
+          {onResetPlatformOptions && (
+            <button
+              type="button"
+              onClick={onResetPlatformOptions}
+              className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-amber-300 text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 shrink-0 cursor-pointer"
+            >
+              ↺ Reset ke Bawaan
+            </button>
+          )}
+        </div>
+
+        {/* Form Add Platform */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (newPlatformInput.trim() && onAddPlatformOption) {
+              onAddPlatformOption(newPlatformInput.trim());
+              setNewPlatformInput('');
+            }
+          }}
+          className="flex flex-col sm:flex-row gap-3 mb-6"
+        >
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-zinc-500">
+              add_link
+            </span>
+            <input
+              type="text"
+              value={newPlatformInput}
+              onChange={(e) => setNewPlatformInput(e.target.value)}
+              placeholder="Tambah nama platform sumber baru (e.g. Google Skillshop, Scrimba)..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer border border-blue-400/30 flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <span className="material-symbols-outlined text-[16px]">add_circle</span>
+            <span>Tambah Platform</span>
+          </button>
+        </form>
+
+        {/* Platforms Pills Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {platformOptions.map((plat) => (
+            <div
+              key={plat}
+              className="flex items-center justify-between p-3 rounded-xl bg-black/50 border border-white/10 hover:border-white/20 transition-all group"
+            >
+              <div className="flex items-center gap-2 overflow-hidden pr-2">
+                <span className="material-symbols-outlined text-[16px] text-blue-400 shrink-0">check_circle</span>
+                <span className="text-xs font-bold text-white truncate">{plat}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onDeletePlatformOption?.(plat)}
+                className="p-1 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
+                title={`Hapus platform ${plat}`}
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Config Drawer / Modal */}

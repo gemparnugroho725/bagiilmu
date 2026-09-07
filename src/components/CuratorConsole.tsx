@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Course, CuratorFormData } from '../types';
 import { BrandLogo } from './BrandLogo';
 import {
@@ -32,6 +32,21 @@ const DEFAULT_CATEGORY_OPTIONS = [
   'Computer Science Fundamentals',
   'Mobile Development',
   'Product & Management',
+];
+
+const DEFAULT_PLATFORM_OPTIONS = [
+  'MIT OpenCourseWare',
+  'freeCodeCamp',
+  'Coursera',
+  'edX',
+  'Harvard Online',
+  'YouTube',
+  'Stanford Online',
+  'Kaggle',
+  'AWS Skill Builder',
+  'Udacity',
+  'Google Skillshop',
+  'IBM SkillsBuild',
 ];
 
 export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
@@ -69,6 +84,348 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
   const [showAutoScrapeBanner, setShowAutoScrapeBanner] = useState(true);
   const [isScrapeModalOpen, setIsScrapeModalOpen] = useState(false);
   const [scrapeInputUrl, setScrapeInputUrl] = useState('https://www.edx.org/learn/computer-science/harvard-university-cs50');
+
+  // Image Upload & Media Management State & Ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUrlImageModalOpen, setIsUrlImageModalOpen] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [isStockGalleryModalOpen, setIsStockGalleryModalOpen] = useState(false);
+
+  // JSON Auto-Fill & Converter State
+  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const [jsonInputText, setJsonInputText] = useState('');
+  const [jsonParseError, setJsonParseError] = useState<string | null>(null);
+  const [jsonParsedResult, setJsonParsedResult] = useState<CuratorFormData | null>(null);
+
+  // Sample JSON Template for user example
+  const SAMPLE_COURSE_JSON = JSON.stringify(
+    {
+      title: 'Harvard CS50: Introduction to Computer Science',
+      platform: 'Harvard / edX',
+      url: 'https://www.edx.org/learn/computer-science/harvard-university-cs50',
+      instructor: 'Prof. David J. Malan',
+      language: 'English',
+      level: 'Beginner',
+      accessTier: '100% Free with Certificate',
+      noCreditCardConfirmed: true,
+      accessDuration: 'lifetime',
+      primaryCategory: 'Computer Science & Fundamentals',
+      duration: '12 Minggu (6-12 jam/minggu)',
+      isSelfPaced: true,
+      skills: [
+        'C Programming',
+        'Python',
+        'SQL',
+        'HTML/CSS',
+        'Algorithms',
+        'Data Structures'
+      ],
+      description: 'Pengantar ilmu komputer dan seni pemrograman terkenal dari Harvard University. Membahas algoritma, struktur data, manajemen memori, keamanan siber, dan rekayasa perangkat lunak web secara komprehensif.',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&auto=format&fit=crop&q=80',
+      thumbnailFilename: 'harvard-cs50-cover.webp'
+    },
+    null,
+    2
+  );
+
+  // Curated stock cover images for courses
+  const STOCK_COVER_IMAGES = [
+    {
+      id: 'webdev',
+      label: 'Web Development & Coding',
+      category: 'Web Dev',
+      url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-web-development-code.webp',
+    },
+    {
+      id: 'ai-data',
+      label: 'AI & Data Science',
+      category: 'Artificial Intelligence',
+      url: 'https://images.unsplash.com/photo-1677442136019-21780efad99a?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-artificial-intelligence.webp',
+    },
+    {
+      id: 'cybersecurity',
+      label: 'Cybersecurity & Hacking',
+      category: 'Security',
+      url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-cyber-security.webp',
+    },
+    {
+      id: 'cloud',
+      label: 'Cloud & DevOps Network',
+      category: 'Cloud',
+      url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-cloud-infrastructure.webp',
+    },
+    {
+      id: 'design',
+      label: 'UI/UX Design & Prototyping',
+      category: 'Design',
+      url: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-uiux-design-wireframe.webp',
+    },
+    {
+      id: 'cs-laptop',
+      label: 'Computer Science Workstation',
+      category: 'Computer Science',
+      url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-computer-science-laptop.webp',
+    },
+    {
+      id: 'mobile',
+      label: 'Mobile App Engineering',
+      category: 'Mobile Dev',
+      url: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-mobile-app-dev.webp',
+    },
+    {
+      id: 'algorithms',
+      label: 'Algorithms & Code Logic',
+      category: 'Software Engineering',
+      url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&auto=format&fit=crop&q=80',
+      filename: 'stock-algorithms-matrix-code.webp',
+    },
+  ];
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToastNotification('Harap pilih berkas gambar yang valid (PNG, JPG, WebP, GIF).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToastNotification('Ukuran berkas gambar maksimal 10 MB!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const resultUrl = event.target?.result as string;
+      if (!resultUrl) return;
+
+      const img = new Image();
+      img.src = resultUrl;
+      img.onload = () => {
+        const dimensions = `${img.width} × ${img.height} px`;
+        const fileSizeInKB = Math.round(file.size / 1024);
+        const fileSizeFormatted =
+          fileSizeInKB > 1024
+            ? `${(fileSizeInKB / 1024).toFixed(1)} MB`
+            : `${fileSizeInKB} KB`;
+
+        setFormData((prev) => ({
+          ...prev,
+          thumbnailUrl: resultUrl,
+          thumbnailFilename: file.name,
+          thumbnailDimensions: dimensions,
+          thumbnailSize: fileSizeFormatted,
+        }));
+
+        createAuditLog({
+          user: adminUsername || 'spar12',
+          action: 'SECURITY_SCAN',
+          actionLabel: 'Unggah Sampul Kursus',
+          target: file.name,
+          details: `Mengunggah sampul gambar baru "${file.name}" (${dimensions}, ${fileSizeFormatted})`,
+          status: 'SUCCESS',
+        });
+
+        showToastNotification(`Gambar "${file.name}" berhasil diunggah!`);
+      };
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleGenerateOpenGraph = () => {
+    const url = formData.url.trim();
+    const title = formData.title.trim();
+
+    const ytMatch = url.match(
+      /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i
+    );
+    if (ytMatch && ytMatch[1]) {
+      const videoId = ytMatch[1];
+      const ytThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      setFormData((prev) => ({
+        ...prev,
+        thumbnailUrl: ytThumbnail,
+        thumbnailFilename: `youtube-og-${videoId}.jpg`,
+        thumbnailDimensions: '1280 × 720 px',
+        thumbnailSize: '185 KB',
+      }));
+      showToastNotification('Thumbnail OpenGraph YouTube berhasil diekstrak!');
+      return;
+    }
+
+    let generatedUrl =
+      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&auto=format&fit=crop&q=80';
+    const lowerCat = formData.primaryCategory.toLowerCase();
+    const lowerTitle = title.toLowerCase();
+
+    if (
+      lowerCat.includes('data') ||
+      lowerCat.includes('ai') ||
+      lowerTitle.includes('python') ||
+      lowerTitle.includes('ai')
+    ) {
+      generatedUrl =
+        'https://images.unsplash.com/photo-1677442136019-21780efad99a?w=1200&auto=format&fit=crop&q=80';
+    } else if (
+      lowerCat.includes('cyber') ||
+      lowerTitle.includes('security') ||
+      lowerTitle.includes('hacking')
+    ) {
+      generatedUrl =
+        'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&auto=format&fit=crop&q=80';
+    } else if (
+      lowerCat.includes('cloud') ||
+      lowerTitle.includes('aws') ||
+      lowerTitle.includes('devops')
+    ) {
+      generatedUrl =
+        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80';
+    } else if (
+      lowerCat.includes('web') ||
+      lowerTitle.includes('react') ||
+      lowerTitle.includes('javascript') ||
+      lowerTitle.includes('html')
+    ) {
+      generatedUrl =
+        'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200&auto=format&fit=crop&q=80';
+    } else if (
+      lowerCat.includes('design') ||
+      lowerTitle.includes('ui') ||
+      lowerTitle.includes('ux')
+    ) {
+      generatedUrl =
+        'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      thumbnailUrl: generatedUrl,
+      thumbnailFilename: 'generated-og-cover.webp',
+      thumbnailDimensions: '1920 × 1080 px',
+      thumbnailSize: '142 KB',
+    }));
+
+    showToastNotification('Thumbnail OpenGraph HD berhasil digenerate berdasarkan tautan & topik!');
+  };
+
+  const handleResetImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&auto=format&fit=crop&q=80',
+      thumbnailFilename: 'default-course-cover.webp',
+      thumbnailDimensions: '1920 × 1080 px',
+      thumbnailSize: '142 KB',
+    }));
+    showToastNotification('Sampul gambar dikembalikan ke bawaan.');
+  };
+
+  const handleApplyUrlImage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = imageUrlInput.trim();
+    if (!trimmed) return;
+
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:image/')) {
+      showToastNotification('Harap masukkan URL yang valid (http://, https://, atau data:image)');
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      thumbnailUrl: trimmed,
+      thumbnailFilename: 'custom-url-cover.webp',
+      thumbnailDimensions: 'Resolusi Web',
+      thumbnailSize: 'Remote Link',
+    }));
+    setIsUrlImageModalOpen(false);
+    setImageUrlInput('');
+    showToastNotification('URL gambar berhasil diterapkan!');
+  };
+
+  const handleValidateAndParseJson = (text: string) => {
+    setJsonInputText(text);
+    if (!text.trim()) {
+      setJsonParseError(null);
+      setJsonParsedResult(null);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed !== 'object' || parsed === null) {
+        setJsonParseError('JSON harus berupa objek { ... } yang valid');
+        setJsonParsedResult(null);
+        return;
+      }
+      setJsonParseError(null);
+      setJsonParsedResult(parsed as CuratorFormData);
+    } catch (err: any) {
+      setJsonParseError(err.message || 'Format JSON tidak valid');
+      setJsonParsedResult(null);
+    }
+  };
+
+  const handleApplyJsonToGui = () => {
+    if (!jsonParsedResult) return;
+
+    // Safely merge parsed JSON with current form defaults
+    const mergedData: CuratorFormData = {
+      title: jsonParsedResult.title || formData.title,
+      platform: jsonParsedResult.platform || formData.platform,
+      url: jsonParsedResult.url || formData.url,
+      instructor: jsonParsedResult.instructor || formData.instructor,
+      language: jsonParsedResult.language || formData.language,
+      level: jsonParsedResult.level || formData.level,
+      accessTier: jsonParsedResult.accessTier || formData.accessTier,
+      noCreditCardConfirmed:
+        typeof jsonParsedResult.noCreditCardConfirmed === 'boolean'
+          ? jsonParsedResult.noCreditCardConfirmed
+          : true,
+      accessDuration: jsonParsedResult.accessDuration || formData.accessDuration,
+      primaryCategory: jsonParsedResult.primaryCategory || formData.primaryCategory,
+      duration: jsonParsedResult.duration || formData.duration,
+      isSelfPaced:
+        typeof jsonParsedResult.isSelfPaced === 'boolean'
+          ? jsonParsedResult.isSelfPaced
+          : true,
+      skills: Array.isArray(jsonParsedResult.skills) ? jsonParsedResult.skills : formData.skills,
+      description: jsonParsedResult.description || formData.description,
+      thumbnailUrl: jsonParsedResult.thumbnailUrl || formData.thumbnailUrl,
+      thumbnailFilename: jsonParsedResult.thumbnailFilename || formData.thumbnailFilename,
+      thumbnailDimensions: jsonParsedResult.thumbnailDimensions || '1920 × 1080 px',
+      thumbnailSize: jsonParsedResult.thumbnailSize || '142 KB',
+    };
+
+    setFormData(mergedData);
+    setIsJsonModalOpen(false);
+
+    createAuditLog({
+      user: adminUsername || 'spar12',
+      action: 'SECURITY_SCAN',
+      actionLabel: 'Konversi JSON ke GUI',
+      target: mergedData.title || 'Data Kursus',
+      details: 'Mengimpor metadata JSON dan mengisi otomatis seluruh kolom formulir GUI',
+      status: 'SUCCESS',
+    });
+
+    showToastNotification('Formulir GUI berhasil diisi otomatis dari data JSON!');
+  };
+
+  const handleExportGuiToJson = () => {
+    const exportedJson = JSON.stringify(formData, null, 2);
+    setJsonInputText(exportedJson);
+    handleValidateAndParseJson(exportedJson);
+    setIsJsonModalOpen(true);
+    showToastNotification('Data formulir GUI saat ini telah diekspor ke format JSON!');
+  };
 
   // Dynamic Categories Management State
   const [categoryOptions, setCategoryOptions] = useState<string[]>(() => {
@@ -131,6 +488,87 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     }
     showToastNotification('Daftar kategori dikembalikan ke bawaan.');
   };
+
+  // Dynamic Platform Options Management State
+  const [platformOptions, setPlatformOptions] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('bagiilmu_custom_platforms');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_PLATFORM_OPTIONS;
+  });
+
+  const [isManagePlatformModalOpen, setIsManagePlatformModalOpen] = useState(false);
+  const [newPlatformInputText, setNewPlatformInputText] = useState('');
+
+  const savePlatformOptions = (options: string[]) => {
+    setPlatformOptions(options);
+    try {
+      localStorage.setItem('bagiilmu_custom_platforms', JSON.stringify(options));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddPlatformOption = (nameInput?: string | React.FormEvent) => {
+    if (typeof nameInput === 'object' && nameInput !== null && 'preventDefault' in nameInput) {
+      nameInput.preventDefault();
+    }
+    const nameStr = typeof nameInput === 'string' ? nameInput : newPlatformInputText;
+    const trimmed = nameStr.trim();
+    if (!trimmed) return;
+    if (platformOptions.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
+      showToastNotification(`Platform "${trimmed}" sudah ada di dalam daftar.`);
+      return;
+    }
+    const updated = [...platformOptions, trimmed];
+    savePlatformOptions(updated);
+    setNewPlatformInputText('');
+    setFormData((prev) => ({ ...prev, platform: trimmed }));
+    createAuditLog({
+      user: adminUsername || 'spar12',
+      action: 'SECURITY_SCAN',
+      actionLabel: 'Tambah Platform Sumber',
+      target: trimmed,
+      details: `Menambahkan platform sumber baru "${trimmed}"`,
+      status: 'SUCCESS',
+    });
+    showToastNotification(`Platform "${trimmed}" berhasil ditambahkan!`);
+  };
+
+  const handleDeletePlatformOption = (platformToDelete: string) => {
+    if (platformOptions.length <= 1) {
+      showToastNotification('Minimal harus ada 1 platform sumber di dalam daftar!');
+      return;
+    }
+    const updated = platformOptions.filter((p) => p !== platformToDelete);
+    savePlatformOptions(updated);
+    if (formData.platform === platformToDelete) {
+      setFormData((prev) => ({ ...prev, platform: updated[0] || '' }));
+    }
+    createAuditLog({
+      user: adminUsername || 'spar12',
+      action: 'SECURITY_SCAN',
+      actionLabel: 'Hapus Platform Sumber',
+      target: platformToDelete,
+      details: `Menghapus platform sumber "${platformToDelete}"`,
+      status: 'WARNING',
+    });
+    showToastNotification(`Platform "${platformToDelete}" berhasil dihapus.`);
+  };
+
+  const handleResetPlatformOptions = () => {
+    savePlatformOptions(DEFAULT_PLATFORM_OPTIONS);
+    if (!DEFAULT_PLATFORM_OPTIONS.includes(formData.platform)) {
+      setFormData((prev) => ({ ...prev, platform: DEFAULT_PLATFORM_OPTIONS[0] }));
+    }
+    showToastNotification('Daftar platform dikembalikan ke bawaan.');
+  };
   const [isExtracting, setIsExtracting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
@@ -162,7 +600,10 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
   }, [pendingSubmissions]);
 
   // Community submission card state
-  const [submissionStatus, setSubmissionStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>('sub-1');
+  const activeSubmission = selectedSubmissionId
+    ? pendingSubmissions.find((s) => s.id === selectedSubmissionId) || null
+    : null;
 
   const handleApproveSubmission = async (sub: PendingSubmission) => {
     const newCourse: Course = {
@@ -221,6 +662,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
   };
 
   const handleReviewInForm = (sub: PendingSubmission) => {
+    setSelectedSubmissionId(sub.id);
     setFormData({
       title: sub.title,
       platform: sub.provider,
@@ -451,6 +893,13 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
       };
 
       await onPublishCourse(newCourse);
+
+      if (selectedSubmissionId) {
+        setPendingSubmissions((prev) =>
+          prev.map((s) => (s.id === selectedSubmissionId ? { ...s, status: 'approved' } : s))
+        );
+      }
+
       createAuditLog({
         user: adminUsername || 'spar12',
         action: 'COURSE_PUBLISHED',
@@ -1094,6 +1543,10 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
             {activeNav === 'integrations' && (
               <AdminPlatformIntegrations
                 showToastNotification={showToastNotification}
+                platformOptions={platformOptions}
+                onAddPlatformOption={handleAddPlatformOption}
+                onDeletePlatformOption={handleDeletePlatformOption}
+                onResetPlatformOptions={handleResetPlatformOptions}
               />
             )}
 
@@ -1155,17 +1608,48 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
               <div className="lg:col-span-7 flex flex-col gap-6">
                 {/* SECTION 1: Basic Info */}
                 <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 shadow-xl border border-white/15">
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-black border border-blue-400/30">
-                      1
-                    </span>
-                    <div>
-                      <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-tight">
-                        Informasi Dasar Kursus (Basic Info)
-                      </h2>
-                      <p className="text-xs text-zinc-400 font-normal">
-                        Detail identifikasi utama dan sumber distribusi kursus
-                      </p>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-black border border-blue-400/30">
+                        1
+                      </span>
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-tight">
+                          Informasi Dasar Kursus (Basic Info)
+                        </h2>
+                        <p className="text-xs text-zinc-400 font-normal">
+                          Detail identifikasi utama dan sumber distribusi kursus
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Tools & JSON Converters */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!jsonInputText) {
+                            setJsonInputText(SAMPLE_COURSE_JSON);
+                            handleValidateAndParseJson(SAMPLE_COURSE_JSON);
+                          }
+                          setIsJsonModalOpen(true);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider transition-all inline-flex items-center gap-1.5 cursor-pointer border border-purple-400/30 shadow-md hover:scale-105"
+                        title="Input JSON dan konversi otomatis ke kolom GUI"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">data_object</span>
+                        <span>Konversi JSON ke GUI</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleExportGuiToJson}
+                        className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1 cursor-pointer border border-white/10"
+                        title="Ekspor isi GUI saat ini ke format JSON"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">code</span>
+                        <span>Export JSON</span>
+                      </button>
                     </div>
                   </div>
 
@@ -1188,25 +1672,32 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                     {/* Platform & URL Row */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
                       <div className="md:col-span-5">
-                        <label className="block text-xs font-black uppercase tracking-wider text-zinc-300 mb-1.5" htmlFor="platform-select-form">
-                          Platform Sumber <span className="text-red-500">*</span>
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-black uppercase tracking-wider text-zinc-300" htmlFor="platform-select-form">
+                            Platform Sumber <span className="text-red-500">*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsManagePlatformModalOpen(true)}
+                            className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                            title="Kelola, Tambah atau Hapus Pilihan Platform Sumber"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">settings_suggest</span>
+                            <span>Kelola ±</span>
+                          </button>
+                        </div>
                         <div className="relative">
                           <select
                             id="platform-select-form"
                             value={formData.platform}
                             onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                            className="w-full appearance-none px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 cursor-pointer"
+                            className="w-full appearance-none px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 cursor-pointer pr-10"
                           >
-                            <option value="MIT OpenCourseWare">MIT OpenCourseWare</option>
-                            <option value="freeCodeCamp">freeCodeCamp</option>
-                            <option value="Coursera">Coursera (Audit Tier)</option>
-                            <option value="edX">edX (Free Audit)</option>
-                            <option value="Harvard Online">Harvard Online</option>
-                            <option value="YouTube">YouTube Open Curriculum</option>
-                            <option value="Stanford Online">Stanford Online</option>
-                            <option value="Kaggle">Kaggle Learn</option>
-                            <option value="AWS Skill Builder">AWS Skill Builder</option>
+                            {platformOptions.map((plat) => (
+                              <option key={plat} value={plat} className="bg-[#0d0d0d] text-white">
+                                {plat}
+                              </option>
+                            ))}
                           </select>
                           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[20px] pointer-events-none text-zinc-500">
                             expand_more
@@ -1648,6 +2139,15 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                   </div>
                 </div>
 
+                {/* Hidden File Input for Device Upload */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleImageFileSelect}
+                  className="hidden"
+                />
+
                 {/* SECTION 4: Media & Thumbnail */}
                 <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 shadow-xl border border-white/15">
                   <div className="flex items-center gap-3 mb-6">
@@ -1666,56 +2166,105 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
                     {/* Thumbnail Dropzone / Preview */}
-                    <div className="sm:col-span-5 aspect-video rounded-xl bg-black/60 overflow-hidden relative group border border-white/15">
+                    <div className="sm:col-span-5 aspect-video rounded-xl bg-black/60 overflow-hidden relative group border border-white/15 shadow-inner">
                       <img
                         src={formData.thumbnailUrl}
-                        alt={formData.title}
+                        alt={formData.title || 'Sampul Kursus'}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80';
+                        }}
                       />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
-                        <button
-                          type="button"
-                          onClick={() => showToastNotification('Dialog unggah gambar siap!')}
-                          className="p-2 rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => showToastNotification('Gambar reset')}
-                          className="p-2 rounded-full bg-white/20 text-red-400 hover:bg-white/30 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
+                      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white p-3 backdrop-blur-[2px]">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-blue-300 mb-1">
+                          Klik untuk Ubah Gambar
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer transition-transform hover:scale-110"
+                            title="Unggah Gambar dari Perangkat"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">upload</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsUrlImageModalOpen(true)}
+                            className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white shadow-lg cursor-pointer transition-transform hover:scale-110"
+                            title="Masukkan URL Gambar"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">link</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleResetImage}
+                            className="p-2.5 rounded-full bg-red-600/80 hover:bg-red-500 text-white shadow-lg cursor-pointer transition-transform hover:scale-110"
+                            title="Reset Gambar ke Bawaan"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Upload Meta Details */}
-                    <div className="sm:col-span-7 flex flex-col justify-center gap-2">
+                    {/* Upload Meta Details & Control Buttons */}
+                    <div className="sm:col-span-7 flex flex-col justify-center gap-3">
                       <div className="flex items-center gap-2 text-white">
                         <span className="material-symbols-outlined text-[20px] text-blue-400">check_circle</span>
-                        <span className="text-xs font-black uppercase tracking-wider">{formData.thumbnailFilename}</span>
+                        <span className="text-xs font-black uppercase tracking-wider truncate max-w-[280px]">
+                          {formData.thumbnailFilename || 'sampul-kursus.webp'}
+                        </span>
                       </div>
+
                       <p className="text-xs text-zinc-400 leading-relaxed font-normal">
-                        1920 × 1080 px • 142 KB • Format WebP optimal. Menampilkan kontras teks yang jelas untuk pembaca mobile.
+                        {formData.thumbnailDimensions || '1920 × 1080 px'} • {formData.thumbnailSize || '142 KB'} • Format visual optimal. Menampilkan kontras teks yang jelas untuk pembaca mobile.
                       </p>
-                      <div className="flex items-center gap-2 pt-1">
+
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        {/* Primary Change Image File Picker */}
                         <button
                           type="button"
-                          onClick={() => showToastNotification('Buka file picker untuk mengganti gambar')}
-                          className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-black uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 cursor-pointer border border-white/10"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-all inline-flex items-center gap-1.5 cursor-pointer border border-blue-400/30 shadow-md"
                         >
                           <span className="material-symbols-outlined text-[16px]">upload_file</span>
                           <span>Ganti Gambar</span>
                         </button>
+
+                        {/* OpenGraph Generator */}
                         <button
                           type="button"
-                          onClick={() => {
-                            showToastNotification('Berhasil mengenerate thumbnail via OpenGraph URL!');
-                          }}
-                          className="px-3.5 py-2 rounded-xl bg-black/50 hover:bg-white/5 text-zinc-400 hover:text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border border-white/10"
+                          onClick={handleGenerateOpenGraph}
+                          className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-black uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 cursor-pointer border border-white/10"
+                          title="Generate thumbnail dari tautan atau YouTube"
                         >
-                          Generate via OpenGraph
+                          <span className="material-symbols-outlined text-[16px] text-blue-400">auto_awesome</span>
+                          <span>Generate via OpenGraph</span>
+                        </button>
+
+                        {/* Custom URL Input Modal trigger */}
+                        <button
+                          type="button"
+                          onClick={() => setIsUrlImageModalOpen(true)}
+                          className="px-3 py-2.5 rounded-xl bg-black/50 hover:bg-white/5 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1 cursor-pointer border border-white/10"
+                          title="Masukkan URL Gambar Langsung"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">link</span>
+                          <span>Input URL</span>
+                        </button>
+
+                        {/* Stock Gallery picker */}
+                        <button
+                          type="button"
+                          onClick={() => setIsStockGalleryModalOpen(true)}
+                          className="px-3 py-2.5 rounded-xl bg-black/50 hover:bg-white/5 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1 cursor-pointer border border-white/10"
+                          title="Pilih dari Galeri Stok HD"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">collections</span>
+                          <span>Stok Galeri</span>
                         </button>
                       </div>
                     </div>
@@ -1894,64 +2443,119 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                       <span className="material-symbols-outlined text-[18px] text-purple-400">forum</span>
                       <span>Submisi Komunitas Terkait</span>
                     </span>
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                        submissionStatus === 'approved'
-                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
-                          : submissionStatus === 'rejected'
-                          ? 'bg-red-950/80 text-red-300 border-red-500/40'
-                          : 'bg-amber-950/80 text-amber-300 border-amber-500/40'
-                      }`}
-                    >
-                      {submissionStatus === 'approved'
-                        ? 'Approved'
-                        : submissionStatus === 'rejected'
-                        ? 'Rejected'
-                        : 'Review Pending'}
-                    </span>
+                    {activeSubmission ? (
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          activeSubmission.status === 'approved'
+                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                            : activeSubmission.status === 'rejected'
+                            ? 'bg-red-950/80 text-red-300 border-red-500/40'
+                            : 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                        }`}
+                      >
+                        {activeSubmission.status === 'approved'
+                          ? 'Approved'
+                          : activeSubmission.status === 'rejected'
+                          ? 'Rejected'
+                          : 'Review Pending'}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-950/80 text-blue-300 border border-blue-500/40 text-[10px] font-black uppercase tracking-wider">
+                        Mode Mandiri
+                      </span>
+                    )}
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-black/60 mb-3 border border-white/10">
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center font-black text-xs">
-                        B
+                  {activeSubmission ? (
+                    <>
+                      <div className="p-3.5 rounded-xl bg-black/60 mb-3 border border-white/10">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center font-black text-xs uppercase shadow-sm">
+                              {activeSubmission.avatar || activeSubmission.author.charAt(0)}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black text-white leading-tight">
+                                @{activeSubmission.author.toLowerCase().replace(/\s+/g, '_')}
+                              </span>
+                              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+                                Diajukan {activeSubmission.submittedTime}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSubmissionId(null)}
+                            className="text-[10px] text-zinc-400 hover:text-white hover:underline cursor-pointer"
+                            title="Lepas tautan submisi untuk mode mandiri"
+                          >
+                            Lepas Tautan
+                          </button>
+                        </div>
+                        <p className="text-xs text-zinc-300 italic leading-relaxed font-normal">
+                          "{activeSubmission.note || activeSubmission.description}"
+                        </p>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-black text-white leading-tight">@budi_dev</span>
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Diajukan 2 jam yang lalu</span>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={activeSubmission.status !== 'pending'}
+                          onClick={() => handleRejectSubmission(activeSubmission.id)}
+                          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1 text-center disabled:opacity-40 cursor-pointer border border-white/10"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">close</span>
+                          <span>Reject</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={activeSubmission.status !== 'pending'}
+                          onClick={() => handleApproveSubmission(activeSubmission)}
+                          className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1 text-center shadow-sm disabled:opacity-40 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">check</span>
+                          <span>Approve</span>
+                        </button>
                       </div>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs text-zinc-400 font-normal leading-relaxed">
+                        Formulir saat ini dalam <strong>Mode Kurasi Mandiri</strong>. Jika ingin meninjau submisi dari pengguna komunitas:
+                      </p>
+
+                      {pendingSubmissions.length > 0 ? (
+                        <div className="space-y-2">
+                          <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-300">
+                            Pilih Submisi Komunitas:
+                          </label>
+                          <select
+                            onChange={(e) => {
+                              const selected = pendingSubmissions.find((s) => s.id === e.target.value);
+                              if (selected) {
+                                handleReviewInForm(selected);
+                              }
+                            }}
+                            value=""
+                            className="w-full px-3 py-2 rounded-xl bg-black/60 text-white text-xs border border-white/15 focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="" disabled>
+                              -- Pilih submisi untuk ditinjau ({pendingSubmissions.filter((s) => s.status === 'pending').length} pending) --
+                            </option>
+                            {pendingSubmissions.map((sub) => (
+                              <option key={sub.id} value={sub.id}>
+                                [{sub.status.toUpperCase()}] {sub.author} - {sub.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+                          <p className="text-xs text-zinc-400">Belum ada submisi komunitas terdaftar.</p>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-zinc-300 italic leading-relaxed font-normal">
-                      "Kursus ini baru saja diperbarui ke Next.js 14 App Router gratis di YouTube freeCodeCamp. Kualitas penjelasan server actions sangat aplikatif untuk mahasiswa."
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      disabled={submissionStatus !== 'pending'}
-                      onClick={() => {
-                        setSubmissionStatus('rejected');
-                        showToastNotification('Submisi komunitas ditolak.');
-                      }}
-                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1 text-center disabled:opacity-40 cursor-pointer border border-white/10"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">close</span>
-                      <span>Reject</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={submissionStatus !== 'pending'}
-                      onClick={() => {
-                        setSubmissionStatus('approved');
-                        showToastNotification('Submisi komunitas disetujui untuk dimasukkan ke antrean kurasi!');
-                      }}
-                      className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1 text-center shadow-sm disabled:opacity-40 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">check</span>
-                      <span>Approve</span>
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2140,6 +2744,429 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
               >
                 Selesai
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Platform Options Modal Dialog */}
+      {isManagePlatformModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative border border-white/15 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center border border-blue-400/30">
+                  <span className="material-symbols-outlined text-[18px]">hub</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Kelola Platform Sumber</h3>
+                  <p className="text-[11px] text-zinc-400 font-normal">Tambah atau hapus pilihan platform dari dropdown</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManagePlatformModalOpen(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-300 mb-4 leading-relaxed font-normal">
+              Masukkan nama platform baru (mis. Google Skillshop, IBM SkillsBuild, Udemy Free) untuk menambahkan ke daftar dropdown, atau tekan tombol Hapus untuk menghapus platform yang tidak digunakan.
+            </p>
+
+            {/* Add new platform input */}
+            <form onSubmit={handleAddPlatformOption} className="flex gap-2 mb-5">
+              <input
+                type="text"
+                value={newPlatformInputText}
+                onChange={(e) => setNewPlatformInputText(e.target.value)}
+                placeholder="Nama platform sumber baru..."
+                className="flex-1 px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 border border-white/15 placeholder:text-zinc-600"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border border-blue-400/30 flex items-center gap-1 shrink-0"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>Tambah</span>
+              </button>
+            </form>
+
+            {/* Current platforms list */}
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-5 scrollbar-thin">
+              <div className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-2">
+                Daftar Platform Aktif ({platformOptions.length})
+              </div>
+              {platformOptions.map((plat) => (
+                <div
+                  key={plat}
+                  className="flex items-center justify-between p-3 rounded-xl bg-black/60 border border-white/10 hover:border-white/20 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 text-xs text-white font-bold">
+                    <span className="material-symbols-outlined text-[16px] text-blue-400">check_circle</span>
+                    <span>{plat}</span>
+                    {formData.platform === plat && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[9px] font-black uppercase">
+                        Terpilih
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePlatformOption(plat)}
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+                    title="Hapus Platform"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    <span>Hapus</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleResetPlatformOptions}
+                className="text-xs text-zinc-400 hover:text-white underline cursor-pointer"
+              >
+                Reset ke Bawaan
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsManagePlatformModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border border-blue-400/30"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Input Custom Image URL Modal */}
+      {isUrlImageModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative border border-white/15 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center border border-blue-400/30">
+                  <span className="material-symbols-outlined text-[18px]">link</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Masukkan Direct URL Gambar</h3>
+                  <p className="text-[11px] text-zinc-400 font-normal">Gunakan link gambar publik dari Unsplash, CDN, atau GitHub</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUrlImageModalOpen(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyUrlImage} className="space-y-4">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-zinc-300 mb-1.5" htmlFor="image-url-modal-input">
+                  Tautan Gambar (HTTP / HTTPS / Base64)
+                </label>
+                <input
+                  id="image-url-modal-input"
+                  type="url"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-... atau https://..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 border border-white/15 placeholder:text-zinc-600"
+                  autoFocus
+                />
+              </div>
+
+              {/* URL Image Live Preview */}
+              {imageUrlInput.trim().startsWith('http') && (
+                <div className="aspect-video rounded-xl bg-black/60 overflow-hidden relative border border-white/15">
+                  <img
+                    src={imageUrlInput.trim()}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80';
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-black/80 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-blue-400 border border-white/10">
+                    Live Link Preview
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsUrlImageModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-bold uppercase tracking-wider cursor-pointer border border-white/10"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!imageUrlInput.trim()}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-black uppercase tracking-wider cursor-pointer border border-blue-400/30 transition-colors"
+                >
+                  Terapkan Gambar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Cover Gallery Modal */}
+      {isStockGalleryModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative border border-white/15 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center border border-blue-400/30">
+                  <span className="material-symbols-outlined text-[18px]">collections</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Galeri Stok Sampul HD</h3>
+                  <p className="text-[11px] text-zinc-400 font-normal">Pilih salah satu gambar HD profesional rasio 16:9 berikut</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStockGalleryModalOpen(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto pr-1 pb-4 scrollbar-thin">
+              {STOCK_COVER_IMAGES.map((imgItem) => (
+                <div
+                  key={imgItem.id}
+                  onClick={() => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      thumbnailUrl: imgItem.url,
+                      thumbnailFilename: imgItem.filename,
+                      thumbnailDimensions: '1920 × 1080 px',
+                      thumbnailSize: '142 KB',
+                    }));
+                    setIsStockGalleryModalOpen(false);
+                    showToastNotification(`Sampul stok "${imgItem.label}" berhasil dipilih!`);
+                  }}
+                  className={`group relative rounded-xl overflow-hidden border border-white/15 bg-black/60 cursor-pointer hover:border-blue-500 transition-all shadow-md ${
+                    formData.thumbnailUrl === imgItem.url ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                  }`}
+                >
+                  <div className="aspect-video w-full overflow-hidden">
+                    <img
+                      src={imgItem.url}
+                      alt={imgItem.label}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="p-2.5 bg-black/90 flex flex-col justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 truncate">
+                      {imgItem.category}
+                    </span>
+                    <span className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors line-clamp-1">
+                      {imgItem.label}
+                    </span>
+                  </div>
+                  {formData.thumbnailUrl === imgItem.url && (
+                    <div className="absolute top-2 right-2 bg-blue-600 text-white p-1 rounded-full shadow-lg border border-blue-400/40">
+                      <span className="material-symbols-outlined text-[14px]">check</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-white/10 shrink-0">
+              <p className="text-[11px] text-zinc-500">Foto berlisensi terbuka dari Unsplash untuk konsistensi visual.</p>
+              <button
+                type="button"
+                onClick={() => setIsStockGalleryModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border border-white/10"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* JSON Auto-Fill & GUI Converter Modal */}
+      {isJsonModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative border border-white/15 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">data_object</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
+                    <span>Konversi JSON Metadata ke GUI Form</span>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 border border-purple-500/40 text-[9px] font-black uppercase tracking-wider">
+                      Auto-Populate
+                    </span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 font-normal">
+                    Input atau tempelkan JSON metadata di bawah. Sistem akan otomatis memetakan nilai ke seluruh kolom formulir GUI.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsJsonModalOpen(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Quick Actions Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJsonInputText(SAMPLE_COURSE_JSON);
+                    handleValidateAndParseJson(SAMPLE_COURSE_JSON);
+                    showToastNotification('Template JSON contoh (Harvard CS50) dimuat!');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 hover:text-white text-xs font-bold uppercase tracking-wider transition-all border border-purple-500/40 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">auto_stories</span>
+                  <span>Muat Template Contoh (CS50)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(SAMPLE_COURSE_JSON);
+                    showToastNotification('Template JSON berhasil disalin ke clipboard!');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">content_copy</span>
+                  <span>Salin Template JSON</span>
+                </button>
+              </div>
+
+              {jsonInputText && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJsonInputText('');
+                    setJsonParseError(null);
+                    setJsonParsedResult(null);
+                  }}
+                  className="text-[11px] font-bold uppercase text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+                >
+                  Bersihkan Textarea
+                </button>
+              )}
+            </div>
+
+            {/* JSON Code Input Area */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+              <div className="relative">
+                <textarea
+                  value={jsonInputText}
+                  onChange={(e) => handleValidateAndParseJson(e.target.value)}
+                  placeholder={`Tempelkan JSON metadata di sini...\n\nContoh Struktur:\n{\n  "title": "Nama Kursus",\n  "platform": "freeCodeCamp",\n  "url": "https://...",\n  "instructor": "Nama Instruktur",\n  "level": "Intermediate",\n  "accessTier": "100% Free with Certificate",\n  "skills": ["React", "TypeScript"],\n  "description": "Deskripsi..."\n}`}
+                  rows={10}
+                  className="w-full p-4 rounded-xl bg-black/90 text-emerald-300 font-mono text-xs border border-white/15 focus:outline-none focus:border-purple-500 transition-all placeholder:text-zinc-600 leading-relaxed shadow-inner"
+                />
+              </div>
+
+              {/* Real-time Validation Status */}
+              {jsonParseError ? (
+                <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] text-red-400 shrink-0">error</span>
+                  <div>
+                    <span className="font-black uppercase tracking-wider block">JSON Syntax Error</span>
+                    <span className="font-mono text-[11px] text-red-200">{jsonParseError}</span>
+                  </div>
+                </div>
+              ) : jsonParsedResult ? (
+                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
+                      <span>JSON Valid &amp; Siap Diimpor ke GUI Form!</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-900/60 text-[10px] font-mono text-emerald-200 border border-emerald-500/30">
+                      {Object.keys(jsonParsedResult).length} Properti Terdeteksi
+                    </span>
+                  </div>
+
+                  {/* Mapping Preview Box */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-emerald-500/20 text-[11px] font-normal text-zinc-300">
+                    <div>
+                      <strong className="text-emerald-400 uppercase font-mono">Judul:</strong>{' '}
+                      {jsonParsedResult.title || <span className="italic text-zinc-500">(Kosong)</span>}
+                    </div>
+                    <div>
+                      <strong className="text-emerald-400 uppercase font-mono">Platform:</strong>{' '}
+                      {jsonParsedResult.platform || <span className="italic text-zinc-500">(Kosong)</span>}
+                    </div>
+                    <div>
+                      <strong className="text-emerald-400 uppercase font-mono">Instruktur:</strong>{' '}
+                      {jsonParsedResult.instructor || <span className="italic text-zinc-500">(Kosong)</span>}
+                    </div>
+                    <div>
+                      <strong className="text-emerald-400 uppercase font-mono">Level:</strong>{' '}
+                      {jsonParsedResult.level || <span className="italic text-zinc-500">(Kosong)</span>}
+                    </div>
+                    <div>
+                      <strong className="text-emerald-400 uppercase font-mono">Akses Tier:</strong>{' '}
+                      {jsonParsedResult.accessTier || <span className="italic text-zinc-500">(Kosong)</span>}
+                    </div>
+                    <div>
+                      <strong className="text-emerald-400 uppercase font-mono">Skills:</strong>{' '}
+                      {Array.isArray(jsonParsedResult.skills) && jsonParsedResult.skills.length > 0
+                        ? jsonParsedResult.skills.join(', ')
+                        : <span className="italic text-zinc-500">(Kosong)</span>}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-4 mt-2 border-t border-white/10 shrink-0">
+              <span className="text-[11px] text-zinc-500 hidden sm:inline">
+                Data JSON akan langsung disinkronkan ke komponen kontrol GUI.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsJsonModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border border-white/10"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={!jsonParsedResult || !!jsonParseError}
+                  onClick={handleApplyJsonToGui}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer border border-purple-400/30 shadow-lg flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[18px]">input</span>
+                  <span>Terapkan ke GUI Form (1-Click)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

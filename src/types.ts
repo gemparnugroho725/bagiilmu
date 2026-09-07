@@ -57,4 +57,6 @@ export interface CuratorFormData {
   description: string;
   thumbnailUrl: string;
   thumbnailFilename: string;
+  thumbnailDimensions?: string;
+  thumbnailSize?: string;
 }
