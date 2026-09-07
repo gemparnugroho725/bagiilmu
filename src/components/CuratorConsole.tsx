@@ -843,6 +843,32 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     }, 3500);
   };
 
+  const handleResetForm = () => {
+    setFormData({
+      title: '',
+      platform: 'freeCodeCamp',
+      url: '',
+      instructor: '',
+      language: 'English',
+      level: 'Intermediate',
+      accessTier: '100% Free with Certificate',
+      noCreditCardConfirmed: true,
+      accessDuration: 'lifetime',
+      primaryCategory: 'Web Development & Engineering',
+      duration: '',
+      isSelfPaced: true,
+      skills: [],
+      description: '',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+      thumbnailFilename: 'sampul-kursus.webp',
+      thumbnailDimensions: '1920 × 1080 px',
+      thumbnailSize: '142 KB',
+    });
+    setSelectedSubmissionId(null);
+    showToastNotification('Formulir di-reset! Siap mengunggah kursus baru.');
+  };
+
   const handlePublish = async () => {
     if (!formData.title.trim()) {
       showToastNotification('Harap masukkan judul kursus!');
@@ -876,7 +902,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
         provider: formData.platform,
         platform: formData.platform.toLowerCase(),
         url: formData.url.trim(),
-        image: formData.thumbnailUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCRAhy1llol-QM2B2amETWfS9gB3Uf8o96k4QV0TNWuMZH0ICXndrPzkP7D9p6yPotI6z2y41Qd6M6iSJkE00RsQub5yorjy-fE3d6LiN8Pk3_qwHw9oLDezYzXLY4ZJCHjjmrt5YQyhbT44nr59sIrecHYUCAT3iRgcZ_7Mjbec31NKyyYA0jiwTvnCJSzXIc4R8vPw3rC2-adoLF3Gxu8fM0YCsaHI7difzlForJMPPHSrR4U7Sq8',
+        image: formData.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
         imageAlt: formData.title,
         category: catKey,
         categoryLabel: formData.primaryCategory.split('&')[0].trim(),
@@ -2270,6 +2296,55 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* SECTION 5: Final Upload Action Box */}
+                <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 shadow-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/30 via-[#0d0d0d] to-purple-950/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0 shadow-md">
+                      <span className="material-symbols-outlined text-[24px]">cloud_upload</span>
+                    </div>
+                    <div>
+                      <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
+                        <span>Publikasikan &amp; Upload Kursus</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase">
+                          Firestore Live
+                        </span>
+                      </h2>
+                      <p className="text-xs text-zinc-400 font-normal">
+                        Simpan permanen ke database Cloud Firestore &amp; langsung tampil di katalog publik
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleResetForm}
+                      className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors border border-white/15 flex-1 sm:flex-none cursor-pointer"
+                      title="Kosongkan seluruh kolom form untuk upload baru"
+                    >
+                      Reset Form
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isPublishing || !formData.title.trim() || !formData.url.trim()}
+                      onClick={handlePublish}
+                      className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-blue-400/40 shadow-lg shadow-blue-600/30 flex-1 sm:flex-none cursor-pointer hover:scale-105 active:scale-95"
+                    >
+                      {isPublishing ? (
+                        <>
+                          <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                          <span>Mengunggah...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                          <span>+ Upload Course Baru</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* RIGHT COLUMN: Sticky Live Preview & QA Checklist (5 cols) */}
@@ -2292,17 +2367,21 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                   {/* Public Course Card Component Replica */}
                   <div className="rounded-2xl overflow-hidden bg-black/60 p-4 transition-all duration-200 border border-white/15 hover:border-blue-500/40">
                     {/* 16:9 Thumbnail preview */}
-                    <div className="aspect-video w-full rounded-xl overflow-hidden relative bg-black">
+                    <div className="aspect-video w-full rounded-xl overflow-hidden relative bg-black group">
                       <img
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRAhy1llol-QM2B2amETWfS9gB3Uf8o96k4QV0TNWuMZH0ICXndrPzkP7D9p6yPotI6z2y41Qd6M6iSJkE00RsQub5yorjy-fE3d6LiN8Pk3_qwHw9oLDezYzXLY4ZJCHjjmrt5YQyhbT44nr59sIrecHYUCAT3iRgcZ_7Mjbec31NKyyYA0jiwTvnCJSzXIc4R8vPw3rC2-adoLF3Gxu8fM0YCsaHI7difzlForJMPPHSrR4U7Sq8"
-                        alt="Course Preview"
-                        className="w-full h-full object-cover"
+                        src={formData.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
+                        alt={formData.title || 'Course Preview'}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80';
+                        }}
                       />
                       {/* Provider Overlay */}
                       <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/15">
                           <span className="material-symbols-outlined text-[13px] text-blue-400">school</span>
-                          <span>{formData.platform}</span>
+                          <span>{formData.platform || 'Platform Sumber'}</span>
                         </span>
                       </div>
                       {/* Certificate / Audit Badge */}
@@ -2325,11 +2404,11 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1 text-blue-400 text-[11px] font-black uppercase tracking-wider">
                           <span className="material-symbols-outlined text-[14px]">terminal</span>
-                          <span>{formData.primaryCategory.split('&')[0].trim()}</span>
+                          <span>{formData.primaryCategory ? formData.primaryCategory.split('&')[0].trim() : 'General'}</span>
                         </span>
                         <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-zinc-400">
                           <span className="material-symbols-outlined text-[14px]">signal_cellular_alt</span>
-                          <span>{formData.level}</span>
+                          <span>{formData.level || 'Beginner'}</span>
                         </span>
                       </div>
 
@@ -2371,13 +2450,21 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                           <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider block">Akses</span>
                           <span className="text-sm font-black uppercase tracking-tight text-blue-400">100% Gratis</span>
                         </div>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-black uppercase tracking-wider hover:bg-blue-500 transition-colors shadow-sm"
+                        <a
+                          href={formData.url || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            if (!formData.url) {
+                              e.preventDefault();
+                              showToastNotification('Tautan direct URL kursus belum diisi di form!');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-sm cursor-pointer hover:scale-105"
                         >
                           <span>Mulai</span>
                           <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>
