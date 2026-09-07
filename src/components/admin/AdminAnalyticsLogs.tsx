@@ -1,79 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Course } from '../../types';
+import { AuditLogEntry, getStoredAuditLogs, saveAuditLogs } from '../../lib/auditLogs';
 
-export interface AuditLogEntry {
-  id: string;
-  timestamp: string;
-  user: string;
-  action: 'COURSE_PUBLISHED' | 'COURSE_DELETED' | 'SUBMISSION_APPROVED' | 'SUBMISSION_REJECTED' | 'CATEGORY_CREATED' | 'SECURITY_SCAN' | 'FIRESTORE_SYNC';
-  actionLabel: string;
-  target: string;
-  details: string;
-  status: 'SUCCESS' | 'WARNING' | 'INFO';
-}
-
-const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
-  {
-    id: 'log-1',
-    timestamp: '2026-09-06 12:45:10',
-    user: 'spar12',
-    action: 'COURSE_PUBLISHED',
-    actionLabel: 'Publikasi Kursus',
-    target: 'Full-Stack Modern React & Next.js 14 Architecture',
-    details: 'Disimpan permanen ke Cloud Firestore collection "courses" dengan direct enrollment URL.',
-    status: 'SUCCESS',
-  },
-  {
-    id: 'log-2',
-    timestamp: '2026-09-06 12:30:42',
-    user: 'spar12',
-    action: 'SUBMISSION_APPROVED',
-    actionLabel: 'Submisi Disetujui',
-    target: 'Submisi dari @cahyo_dev',
-    details: 'Lolos verifikasi QA 4 checklist dan anti-safelink check.',
-    status: 'SUCCESS',
-  },
-  {
-    id: 'log-3',
-    timestamp: '2026-09-06 11:15:00',
-    user: 'system_daemon',
-    action: 'FIRESTORE_SYNC',
-    actionLabel: 'Firestore Sync',
-    target: 'courses / snapshot listener',
-    details: 'WebSocket listener sinkronisasi penuh dengan indeks latency 24ms.',
-    status: 'INFO',
-  },
-  {
-    id: 'log-4',
-    timestamp: '2026-09-06 10:02:19',
-    user: 'spar12',
-    action: 'SECURITY_SCAN',
-    actionLabel: 'Security Audit',
-    target: 'Direct Link URLs',
-    details: 'Semua 12 tautan eksternal lulus validasi HTTPS dan tanpa paywall terselubung.',
-    status: 'SUCCESS',
-  },
-  {
-    id: 'log-5',
-    timestamp: '2026-09-06 09:20:45',
-    user: 'spar12',
-    action: 'CATEGORY_CREATED',
-    actionLabel: 'Kategori Ditambahkan',
-    target: 'Cloud & DevOps Architecture',
-    details: 'Ditambahkan ke daftar taksonomi utama katalog publik.',
-    status: 'INFO',
-  },
-  {
-    id: 'log-6',
-    timestamp: '2026-09-05 22:10:00',
-    user: 'system_daemon',
-    action: 'SECURITY_SCAN',
-    actionLabel: 'Anti-Spam Check',
-    target: 'Antrean Komunitas',
-    details: '1 submission dengan link shortener otomatis ditolak oleh filter heuristik.',
-    status: 'WARNING',
-  },
-];
+export type { AuditLogEntry };
 
 interface AdminAnalyticsLogsProps {
   courses: Course[];
@@ -84,9 +13,21 @@ export const AdminAnalyticsLogs: React.FC<AdminAnalyticsLogsProps> = ({
   courses,
   showToastNotification,
 }) => {
-  const [logs, setLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [actionFilter, setActionFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    setLogs(getStoredAuditLogs());
+  }, []);
+
+  const clearLogs = () => {
+    if (window.confirm('Yakin ingin membersihkan riwayat audit log lokal?')) {
+      setLogs([]);
+      saveAuditLogs([]);
+      showToastNotification('Riwayat audit log dibersihkan.');
+    }
+  };
 
   // Provider distribution
   const providerStats = [
@@ -136,13 +77,6 @@ export const AdminAnalyticsLogs: React.FC<AdminAnalyticsLogsProps> = ({
     downloadAnchor.click();
     downloadAnchor.remove();
     showToastNotification('File audit log (CSV) berhasil diunduh!');
-  };
-
-  const clearLogs = () => {
-    if (window.confirm('Yakin ingin membersihkan riwayat audit log lokal?')) {
-      setLogs([]);
-      showToastNotification('Riwayat audit log dibersihkan.');
-    }
   };
 
   return (

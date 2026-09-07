@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Course } from '../../types';
+import { createAuditLog } from '../../lib/auditLogs';
 
 interface AdminSettingsProps {
   adminUsername: string;
@@ -9,6 +10,24 @@ interface AdminSettingsProps {
   showToastNotification: (msg: string) => void;
 }
 
+const POLICIES_STORAGE_KEY = 'bagiilmu_quality_policies';
+
+interface QualityPolicies {
+  requireDirectUrl: boolean;
+  requireMinModules: boolean;
+  verifyFreeCert: boolean;
+  autoExtractMetadata: boolean;
+  notifyOnNewSubmission: boolean;
+}
+
+const DEFAULT_POLICIES: QualityPolicies = {
+  requireDirectUrl: true,
+  requireMinModules: true,
+  verifyFreeCert: true,
+  autoExtractMetadata: true,
+  notifyOnNewSubmission: true,
+};
+
 export const AdminSettings: React.FC<AdminSettingsProps> = ({
   adminUsername,
   courses,
@@ -16,12 +35,16 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   onResetToSample,
   showToastNotification,
 }) => {
-  // Quality Gate Policies
-  const [requireDirectUrl, setRequireDirectUrl] = useState(true);
-  const [requireMinModules, setRequireMinModules] = useState(true);
-  const [verifyFreeCert, setVerifyFreeCert] = useState(true);
-  const [autoExtractMetadata, setAutoExtractMetadata] = useState(true);
-  const [notifyOnNewSubmission, setNotifyOnNewSubmission] = useState(true);
+  // Quality Gate Policies State
+  const [policies, setPolicies] = useState<QualityPolicies>(() => {
+    try {
+      const saved = localStorage.getItem(POLICIES_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error loading policies:', e);
+    }
+    return DEFAULT_POLICIES;
+  });
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -29,9 +52,30 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(POLICIES_STORAGE_KEY, JSON.stringify(policies));
+    } catch (e) {
+      console.error('Error saving policies:', e);
+    }
+  }, [policies]);
+
   const handleSavePreferences = (e: React.FormEvent) => {
     e.preventDefault();
-    showToastNotification('Preferensi kurasi dan aturan kualitas berhasil disimpan!');
+    try {
+      localStorage.setItem(POLICIES_STORAGE_KEY, JSON.stringify(policies));
+      createAuditLog({
+        user: adminUsername || 'curator',
+        action: 'SECURITY_SCAN',
+        actionLabel: 'Aturan Kurasi Diperbarui',
+        target: 'Quality Gate Policies',
+        details: 'Kebijakan verifikasi direct link & free cert diperbarui di sistem.',
+        status: 'SUCCESS',
+      });
+      showToastNotification('Preferensi kurasi dan aturan kualitas berhasil disimpan!');
+    } catch (err) {
+      showToastNotification('Gagal menyimpan preferensi.');
+    }
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -133,8 +177,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 </div>
                 <input
                   type="checkbox"
-                  checked={requireDirectUrl}
-                  onChange={(e) => setRequireDirectUrl(e.target.checked)}
+                  checked={policies.requireDirectUrl}
+                  onChange={(e) => setPolicies({ ...policies, requireDirectUrl: e.target.checked })}
                   className="w-5 h-5 rounded bg-black/60 border-white/20 text-blue-600 focus:ring-0 cursor-pointer"
                 />
               </div>
@@ -150,8 +194,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 </div>
                 <input
                   type="checkbox"
-                  checked={requireMinModules}
-                  onChange={(e) => setRequireMinModules(e.target.checked)}
+                  checked={policies.requireMinModules}
+                  onChange={(e) => setPolicies({ ...policies, requireMinModules: e.target.checked })}
                   className="w-5 h-5 rounded bg-black/60 border-white/20 text-blue-600 focus:ring-0 cursor-pointer"
                 />
               </div>
@@ -167,8 +211,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 </div>
                 <input
                   type="checkbox"
-                  checked={verifyFreeCert}
-                  onChange={(e) => setVerifyFreeCert(e.target.checked)}
+                  checked={policies.verifyFreeCert}
+                  onChange={(e) => setPolicies({ ...policies, verifyFreeCert: e.target.checked })}
                   className="w-5 h-5 rounded bg-black/60 border-white/20 text-blue-600 focus:ring-0 cursor-pointer"
                 />
               </div>
@@ -184,8 +228,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 </div>
                 <input
                   type="checkbox"
-                  checked={autoExtractMetadata}
-                  onChange={(e) => setAutoExtractMetadata(e.target.checked)}
+                  checked={policies.autoExtractMetadata}
+                  onChange={(e) => setPolicies({ ...policies, autoExtractMetadata: e.target.checked })}
                   className="w-5 h-5 rounded bg-black/60 border-white/20 text-blue-600 focus:ring-0 cursor-pointer"
                 />
               </div>
@@ -201,8 +245,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 </div>
                 <input
                   type="checkbox"
-                  checked={notifyOnNewSubmission}
-                  onChange={(e) => setNotifyOnNewSubmission(e.target.checked)}
+                  checked={policies.notifyOnNewSubmission}
+                  onChange={(e) => setPolicies({ ...policies, notifyOnNewSubmission: e.target.checked })}
                   className="w-5 h-5 rounded bg-black/60 border-white/20 text-blue-600 focus:ring-0 cursor-pointer"
                 />
               </div>

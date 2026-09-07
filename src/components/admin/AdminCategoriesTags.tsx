@@ -134,6 +134,16 @@ export const AdminCategoriesTags: React.FC<AdminCategoriesTagsProps> = ({
     };
 
     setCategories((prev) => [...prev, newCategory]);
+    try {
+      const saved = localStorage.getItem('bagiilmu_custom_categories');
+      const cats: string[] = saved ? JSON.parse(saved) : [];
+      if (!cats.includes(newCategory.label)) {
+        cats.push(newCategory.label);
+        localStorage.setItem('bagiilmu_custom_categories', JSON.stringify(cats));
+      }
+    } catch (err) {
+      console.error(err);
+    }
     setNewCatLabel('');
     setNewCatDesc('');
     setIsAddCatOpen(false);
@@ -142,6 +152,16 @@ export const AdminCategoriesTags: React.FC<AdminCategoriesTagsProps> = ({
 
   const handleDeleteCategory = (id: string, label: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
+    try {
+      const saved = localStorage.getItem('bagiilmu_custom_categories');
+      if (saved) {
+        const cats: string[] = JSON.parse(saved);
+        const filtered = cats.filter((c) => c.toLowerCase() !== label.toLowerCase());
+        localStorage.setItem('bagiilmu_custom_categories', JSON.stringify(filtered));
+      }
+    } catch (err) {
+      console.error(err);
+    }
     showToastNotification(`Kategori "${label}" dihapus.`);
   };
 

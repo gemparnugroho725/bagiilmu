@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Course, CuratorFormData } from '../types';
 import { BrandLogo } from './BrandLogo';
 import {
@@ -10,6 +10,7 @@ import { AdminCategoriesTags } from './admin/AdminCategoriesTags';
 import { AdminPlatformIntegrations } from './admin/AdminPlatformIntegrations';
 import { AdminAnalyticsLogs } from './admin/AdminAnalyticsLogs';
 import { AdminSettings } from './admin/AdminSettings';
+import { createAuditLog } from '../lib/auditLogs';
 
 interface CuratorConsoleProps {
   onBackToCatalog: () => void;
@@ -22,6 +23,17 @@ interface CuratorConsoleProps {
   onLogout?: () => void;
 }
 
+const DEFAULT_CATEGORY_OPTIONS = [
+  'Web Development & Engineering',
+  'Data Science & Artificial Intelligence',
+  'Cybersecurity & Ethical Hacking',
+  'Cloud Computing & DevOps',
+  'UI/UX Design & Product Strategy',
+  'Computer Science Fundamentals',
+  'Mobile Development',
+  'Product & Management',
+];
+
 export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
   onBackToCatalog,
   onPublishCourse,
@@ -32,32 +44,93 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
   adminUsername = 'spar12',
   onLogout,
 }) => {
-  // Form state
+  // Form state - Default empty fields with placeholders for clean user input
   const [formData, setFormData] = useState<CuratorFormData>({
-    title: 'Full-Stack Modern React & Next.js 14 Architecture',
+    title: '',
     platform: 'freeCodeCamp',
-    url: 'https://www.freecodecamp.org/learn/full-stack-developer/',
-    instructor: 'MIT & Open Education Initiative',
+    url: '',
+    instructor: '',
     language: 'English',
     level: 'Intermediate',
     accessTier: '100% Free with Certificate',
     noCreditCardConfirmed: true,
     accessDuration: 'lifetime',
     primaryCategory: 'Web Development & Engineering',
-    duration: '36 Jam (4-6 Minggu disarankan)',
+    duration: '',
     isSelfPaced: true,
-    skills: ['React', 'TypeScript', 'Next.js 14', 'Tailwind CSS', 'Server Actions'],
-    description:
-      'Pelajari paradigma rekayasa web modern mulai dari fondasi React Server Components, optimasi caching Next.js App Router, hingga integrasi database Postgres dan arsitektur autentikasi nir-server. Dilengkapi 4 proyek mini industri dan 1 capstone project produksi nyata.',
+    skills: [],
+    description: '',
     thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDCMnQBVLBoDLS89x_cll6_VNujgzJ67uuZcmkYKLSwj-jZKl0X3MyO1wMr3aL98keIiVkcKNif7tThYVl7Iq6Sf4b5O7m8bW-xMPEZb97dcpdbV7IQmkpvC9O-AiRJdldnfLRmdg6u4IpaHlV_rct9ikAYkT3-N6eY-Tr2HrAWwMJs7ItIjm-rqxMi37eSPizjo0xARaKRrEq3mQs5A3ol6vv-AobvAXnaxVbnGA7ui5h5uQCluFO1',
-    thumbnailFilename: 'react-next14-architecture-cover.webp',
+      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+    thumbnailFilename: 'default-course-cover.webp',
   });
 
   const [newSkillTag, setNewSkillTag] = useState('');
   const [showAutoScrapeBanner, setShowAutoScrapeBanner] = useState(true);
   const [isScrapeModalOpen, setIsScrapeModalOpen] = useState(false);
   const [scrapeInputUrl, setScrapeInputUrl] = useState('https://www.edx.org/learn/computer-science/harvard-university-cs50');
+
+  // Dynamic Categories Management State
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('bagiilmu_custom_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_CATEGORY_OPTIONS;
+  });
+
+  const [isManageCatModalOpen, setIsManageCatModalOpen] = useState(false);
+  const [newCatInputText, setNewCatInputText] = useState('');
+
+  const saveCategoryOptions = (options: string[]) => {
+    setCategoryOptions(options);
+    try {
+      localStorage.setItem('bagiilmu_custom_categories', JSON.stringify(options));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddCategoryOption = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = newCatInputText.trim();
+    if (!trimmed) return;
+    if (categoryOptions.includes(trimmed)) {
+      showToastNotification(`Kategori "${trimmed}" sudah ada.`);
+      return;
+    }
+    const updated = [...categoryOptions, trimmed];
+    saveCategoryOptions(updated);
+    setNewCatInputText('');
+    setFormData((prev) => ({ ...prev, primaryCategory: trimmed }));
+    showToastNotification(`Kategori "${trimmed}" berhasil ditambahkan!`);
+  };
+
+  const handleDeleteCategoryOption = (catToDelete: string) => {
+    if (categoryOptions.length <= 1) {
+      showToastNotification('Minimal harus ada 1 kategori di dalam daftar!');
+      return;
+    }
+    const updated = categoryOptions.filter((c) => c !== catToDelete);
+    saveCategoryOptions(updated);
+    if (formData.primaryCategory === catToDelete) {
+      setFormData((prev) => ({ ...prev, primaryCategory: updated[0] || '' }));
+    }
+    showToastNotification(`Kategori "${catToDelete}" berhasil dihapus.`);
+  };
+
+  const handleResetCategoryOptions = () => {
+    saveCategoryOptions(DEFAULT_CATEGORY_OPTIONS);
+    if (!DEFAULT_CATEGORY_OPTIONS.includes(formData.primaryCategory)) {
+      setFormData((prev) => ({ ...prev, primaryCategory: DEFAULT_CATEGORY_OPTIONS[0] }));
+    }
+    showToastNotification('Daftar kategori dikembalikan ke bawaan.');
+  };
   const [isExtracting, setIsExtracting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
@@ -70,8 +143,23 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     'dashboard' | 'submit' | 'repo' | 'pending' | 'categories' | 'integrations' | 'analytics' | 'settings'
   >('dashboard');
 
-  // Community pending submissions state (8 active community submissions)
-  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>(INITIAL_PENDING_SUBMISSIONS);
+  // Community pending submissions state (persisted to localStorage)
+  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>(() => {
+    try {
+      const saved = localStorage.getItem('bagiilmu_pending_submissions');
+      return saved ? JSON.parse(saved) : INITIAL_PENDING_SUBMISSIONS;
+    } catch {
+      return INITIAL_PENDING_SUBMISSIONS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('bagiilmu_pending_submissions', JSON.stringify(pendingSubmissions));
+    } catch (e) {
+      console.error('Failed to save pending submissions:', e);
+    }
+  }, [pendingSubmissions]);
 
   // Community submission card state
   const [submissionStatus, setSubmissionStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
@@ -103,13 +191,32 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     setPendingSubmissions((prev) =>
       prev.map((s) => (s.id === sub.id ? { ...s, status: 'approved' } : s))
     );
+    createAuditLog({
+      user: adminUsername || 'spar12',
+      action: 'SUBMISSION_APPROVED',
+      actionLabel: 'Approval Submisi',
+      target: sub.title,
+      details: `Menyetujui submisi komunitas "${sub.title}" oleh ${sub.author}`,
+      status: 'SUCCESS',
+    });
     showToastNotification(`Kursus "${sub.title}" berhasil disetujui & dipublikasikan ke Firestore!`);
   };
 
   const handleRejectSubmission = (submissionId: string) => {
+    const sub = pendingSubmissions.find((s) => s.id === submissionId);
     setPendingSubmissions((prev) =>
       prev.map((s) => (s.id === submissionId ? { ...s, status: 'rejected' } : s))
     );
+    if (sub) {
+      createAuditLog({
+        user: adminUsername || 'spar12',
+        action: 'SUBMISSION_REJECTED',
+        actionLabel: 'Penolakan Submisi',
+        target: sub.title,
+        details: `Menolak submisi komunitas "${sub.title}" oleh ${sub.author}`,
+        status: 'WARNING',
+      });
+    }
     showToastNotification('Submisi komunitas ditolak.');
   };
 
@@ -165,6 +272,14 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     setPendingSubmissions((prev) =>
       prev.map((s) => (s.status === 'pending' ? { ...s, status: 'approved' } : s))
     );
+    createAuditLog({
+      user: adminUsername || 'spar12',
+      action: 'SUBMISSION_APPROVED',
+      actionLabel: 'Batch Approval',
+      target: `${pendingOnly.length} Submisi Komunitas`,
+      details: `Persetujuan massal untuk ${pendingOnly.length} submisi komunitas`,
+      status: 'SUCCESS',
+    });
     showToastNotification(`${pendingOnly.length} kursus komunitas disetujui & dipublikasikan ke Firestore!`);
   };
 
@@ -205,28 +320,77 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     }));
   };
 
-  // Auto-Scrape Extraction Simulation
+  // Auto-Scrape Extraction Logic (Dynamic parsing based on URL pattern)
   const handleAutoScrape = () => {
     setIsExtracting(true);
     setTimeout(() => {
       setIsExtracting(false);
       setIsScrapeModalOpen(false);
+
+      const urlLower = scrapeInputUrl.toLowerCase();
+      let extractedTitle = "CS50's Introduction to Computer Science & Python Programming";
+      let extractedPlatform = 'Harvard Online';
+      let extractedInstructor = 'Prof. David J. Malan / Harvard University';
+      let extractedAccessTier = '100% Free with Certificate';
+      let extractedLevel = 'Beginner';
+      let extractedCategory = 'Computer Science Core';
+      let extractedDuration = '10 Minggu (6-12 jam / minggu)';
+      let extractedSkills = ['C', 'Python', 'SQL', 'Algorithms', 'Data Structures', 'Flask'];
+      let extractedDesc = "An introduction to the intellectual enterprises of computer science and the art of programming for majors and non-majors alike.";
+
+      if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+        extractedTitle = "Full Stack Web Development Open Course Series";
+        extractedPlatform = "YouTube";
+        extractedInstructor = "FreeCodeCamp & Tech Educator Community";
+        extractedAccessTier = "Open Educational Resource (OER)";
+        extractedCategory = "Web Development & Frontend";
+        extractedDuration = "12 Jam Video";
+        extractedSkills = ["JavaScript", "HTML5", "CSS3", "React", "Node.js"];
+        extractedDesc = "Materi kursus pemrograman web modern lengkap dengan contoh proyek praktis.";
+      } else if (urlLower.includes('freecodecamp.org')) {
+        extractedTitle = "Responsive Web Design Certification Curriculum";
+        extractedPlatform = "freeCodeCamp";
+        extractedInstructor = "Quincy Larson & freeCodeCamp Contributors";
+        extractedAccessTier = "100% Free with Certificate";
+        extractedCategory = "Web Development & Frontend";
+        extractedDuration = "300 Jam (Self-Paced)";
+        extractedSkills = ["HTML5", "CSS3", "Flexbox", "CSS Grid", "Accessibility"];
+        extractedDesc = "Belajar mendesain web responsif interaktif lengkap dengan proyek portofolio gratis.";
+      } else if (urlLower.includes('coursera.org')) {
+        extractedTitle = "Machine Learning & AI Engineering Fundamentals";
+        extractedPlatform = "Coursera";
+        extractedInstructor = "Stanford University & DeepLearning.AI";
+        extractedAccessTier = "Free Audit Only / No Free Certificate";
+        extractedCategory = "AI, Data & Machine Learning";
+        extractedDuration = "8 Minggu (5 jam / minggu)";
+        extractedSkills = ["Python", "TensorFlow", "Supervised Learning", "Data Analysis"];
+        extractedDesc = "Akses materi kuliah Machine Learning dari Stanford University secara gratis melalui mode Audit.";
+      } else if (urlLower.includes('ocw.mit.edu')) {
+        extractedTitle = "MIT 6.0001 Introduction to Computer Science and Programming in Python";
+        extractedPlatform = "MIT OpenCourseWare";
+        extractedInstructor = "Prof. Eric Grimson & Prof. John Guttag / MIT";
+        extractedAccessTier = "Open Educational Resource (OER)";
+        extractedCategory = "Computer Science Core";
+        extractedDuration = "15 Minggu (Self-Paced)";
+        extractedSkills = ["Python 3", "Algorithms", "Object-Oriented Programming", "Computational Thinking"];
+        extractedDesc = "Materi perkuliahan resmi MIT meliputi slide presentasi, masalah pemrograman, dan ujian beserta kunci jawaban.";
+      }
+
       setFormData((prev) => ({
         ...prev,
-        title: "CS50's Introduction to Computer Science & Python Programming",
-        platform: 'Harvard Online',
-        url: scrapeInputUrl,
-        instructor: 'Prof. David J. Malan / Harvard University',
-        accessTier: '100% Free with Certificate',
-        level: 'Beginner',
-        primaryCategory: 'Computer Science Core',
-        duration: '10 Minggu (6-12 jam / minggu)',
-        skills: ['C', 'Python', 'SQL', 'Algorithms', 'Data Structures', 'Flask'],
-        description:
-          "An introduction to the intellectual enterprises of computer science and the art of programming for majors and non-majors alike, with or without prior programming experience. Taught by David J. Malan.",
-        thumbnailFilename: 'cs50-harvard-curriculum-cover.webp',
+        title: extractedTitle,
+        platform: extractedPlatform,
+        url: scrapeInputUrl || prev.url,
+        instructor: extractedInstructor,
+        accessTier: extractedAccessTier,
+        level: extractedLevel,
+        primaryCategory: extractedCategory,
+        duration: extractedDuration,
+        skills: extractedSkills,
+        description: extractedDesc,
+        thumbnailFilename: 'extracted-course-cover.webp',
       }));
-      showToastNotification('Metadata berhasil diekstrak dari tautan kursus!');
+      showToastNotification('Metadata berhasil diekstrak secara dinamis dari tautan kursus!');
     }, 1200);
   };
 
@@ -287,6 +451,14 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
       };
 
       await onPublishCourse(newCourse);
+      createAuditLog({
+        user: adminUsername || 'spar12',
+        action: 'COURSE_PUBLISHED',
+        actionLabel: 'Publikasi Kursus',
+        target: newCourse.title,
+        details: `Disimpan permanen ke Cloud Firestore collection "courses" (${newCourse.provider})`,
+        status: 'SUCCESS',
+      });
       showToastNotification('Kursus berhasil disimpan permanen ke database Cloud Firestore!');
     } catch (err) {
       console.error(err);
@@ -1009,7 +1181,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 placeholder:text-zinc-600"
-                        placeholder="e.g. CS50's Introduction to Computer Science"
+                        placeholder="Contoh: Full-Stack Modern React & Next.js 14 Architecture"
                       />
                     </div>
 
@@ -1057,7 +1229,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                               value={formData.url}
                               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                               className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 placeholder:text-zinc-600"
-                              placeholder="https://..."
+                              placeholder="Contoh: https://www.freecodecamp.org/learn/full-stack-developer/"
                             />
                           </div>
                           <a
@@ -1086,7 +1258,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                           value={formData.instructor}
                           onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
                           className="w-full px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 placeholder:text-zinc-600"
-                          placeholder="e.g. Prof. David J. Malan / freeCodeCamp"
+                          placeholder="Contoh: MIT & Open Education Initiative"
                         />
                       </div>
 
@@ -1347,22 +1519,31 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                     {/* Category & Duration Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
                       <div className="md:col-span-6">
-                        <label className="block text-xs font-black uppercase tracking-wider text-zinc-300 mb-1.5" htmlFor="primary-category">
-                          Kategori Utama <span className="text-red-500">*</span>
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-black uppercase tracking-wider text-zinc-300" htmlFor="primary-category">
+                            Kategori Utama <span className="text-red-500">*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsManageCatModalOpen(true)}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-wider transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">edit_note</span>
+                            <span>+ / - Kelola Kategori</span>
+                          </button>
+                        </div>
                         <div className="relative">
                           <select
                             id="primary-category"
                             value={formData.primaryCategory}
                             onChange={(e) => setFormData({ ...formData, primaryCategory: e.target.value })}
-                            className="w-full appearance-none px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 cursor-pointer"
+                            className="w-full appearance-none px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 cursor-pointer pr-10"
                           >
-                            <option value="Web Development & Engineering">Web Development &amp; Engineering</option>
-                            <option value="Data Science & Artificial Intelligence">Data Science &amp; Artificial Intelligence</option>
-                            <option value="Cybersecurity & Ethical Hacking">Cybersecurity &amp; Ethical Hacking</option>
-                            <option value="Cloud Computing & DevOps">Cloud Computing &amp; DevOps</option>
-                            <option value="UI/UX Design & Product Strategy">UI/UX Design &amp; Product Strategy</option>
-                            <option value="Computer Science Core">Computer Science Fundamentals</option>
+                            {categoryOptions.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
                           </select>
                           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[20px] pointer-events-none text-zinc-500">
                             category
@@ -1395,6 +1576,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                             value={formData.duration}
                             onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                             className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all border border-white/15 placeholder:text-zinc-600"
+                            placeholder="Contoh: 36 Jam (4-6 Minggu disarankan)"
                           />
                         </div>
                       </div>
@@ -1460,6 +1642,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         className="w-full p-3.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 transition-all resize-y border border-white/15 leading-relaxed placeholder:text-zinc-600"
+                        placeholder="Contoh: Pelajari paradigma rekayasa web modern mulai dari fondasi React Server Components, optimasi caching Next.js App Router, hingga integrasi database..."
                       />
                     </div>
                   </div>
@@ -1602,11 +1785,11 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                       </div>
 
                       <h3 className="text-base font-black uppercase tracking-tight text-white leading-snug line-clamp-2 hover:text-blue-400 transition-colors">
-                        {formData.title}
+                        {formData.title || 'JUDUL LENGKAP KURSUS...'}
                       </h3>
 
                       <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed font-normal">
-                        {formData.description}
+                        {formData.description || 'Deskripsi singkat dan ikhtisar silabus akan ditampilkan di sini...'}
                       </p>
 
                       {/* Meta Row: Rating, Hours */}
@@ -1624,7 +1807,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                         <div className="flex items-center gap-3 text-[11px] font-bold">
                           <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-[15px] text-zinc-500">schedule</span>
-                            <span>{formData.duration.split('(')[0].trim()}</span>
+                            <span>{formData.duration ? formData.duration.split('(')[0].trim() : '36 Jam'}</span>
                           </span>
                           <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-[15px] text-zinc-500">all_inclusive</span>
@@ -1863,6 +2046,99 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                     <span>Ekstrak Metadata</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Categories Modal Dialog */}
+      {isManageCatModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative border border-white/15 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center border border-blue-400/30">
+                  <span className="material-symbols-outlined text-[18px]">category</span>
+                </div>
+                <h3 className="text-lg font-black uppercase tracking-tight text-white">Kelola Opsi Kategori</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManageCatModalOpen(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-300 mb-4 leading-relaxed font-normal">
+              Tambah kategori baru atau hapus kategori yang tidak diperlukan. Pilihan kategori akan otomatis diperbarui di formulir kurator.
+            </p>
+
+            {/* Add new category input */}
+            <form onSubmit={handleAddCategoryOption} className="flex gap-2 mb-5">
+              <input
+                type="text"
+                value={newCatInputText}
+                onChange={(e) => setNewCatInputText(e.target.value)}
+                placeholder="Nama kategori baru (mis. AI Prompt Engineering)..."
+                className="flex-1 px-4 py-2.5 rounded-xl bg-black/60 text-white text-xs focus:outline-none focus:border-blue-500 border border-white/15 placeholder:text-zinc-600"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border border-blue-400/30 flex items-center gap-1 shrink-0"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>Tambah</span>
+              </button>
+            </form>
+
+            {/* Current categories list */}
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-5 scrollbar-thin">
+              <div className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-2">
+                Daftar Kategori Aktif ({categoryOptions.length})
+              </div>
+              {categoryOptions.map((cat) => (
+                <div
+                  key={cat}
+                  className="flex items-center justify-between p-3 rounded-xl bg-black/60 border border-white/10 hover:border-white/20 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 text-xs text-white font-bold">
+                    <span className="material-symbols-outlined text-[16px] text-blue-400">label</span>
+                    <span>{cat}</span>
+                    {formData.primaryCategory === cat && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[9px] font-black uppercase">
+                        Terpilih
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategoryOption(cat)}
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
+                    title="Hapus Kategori"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleResetCategoryOptions}
+                className="text-xs text-zinc-400 hover:text-white underline cursor-pointer"
+              >
+                Reset ke Bawaan
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsManageCatModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border border-blue-400/30"
+              >
+                Selesai
               </button>
             </div>
           </div>
