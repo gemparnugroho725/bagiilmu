@@ -2298,29 +2298,31 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                 </div>
 
                 {/* SECTION 5: Final Upload Action Box */}
-                <div className="bg-[#0d0d0d] rounded-2xl p-6 sm:p-8 shadow-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/30 via-[#0d0d0d] to-purple-950/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0 shadow-md">
-                      <span className="material-symbols-outlined text-[24px]">cloud_upload</span>
-                    </div>
-                    <div>
-                      <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
-                        <span>Publikasikan &amp; Upload Kursus</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase">
-                          Firestore Live
-                        </span>
-                      </h2>
-                      <p className="text-xs text-zinc-400 font-normal">
-                        Simpan permanen ke database Cloud Firestore &amp; langsung tampil di katalog publik
-                      </p>
+                <div className="bg-[#0d0d0d] rounded-2xl p-5 sm:p-7 shadow-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-[#0d0d0d] to-purple-950/30 flex flex-col gap-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0 shadow-md">
+                        <span className="material-symbols-outlined text-[24px]">cloud_upload</span>
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2 flex-wrap">
+                          <span>Publikasikan &amp; Upload Kursus</span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider">
+                            Firestore Live
+                          </span>
+                        </h2>
+                        <p className="text-xs text-zinc-400 font-normal">
+                          Simpan permanen ke database Cloud Firestore &amp; langsung tampil di katalog publik
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
                     <button
                       type="button"
                       onClick={handleResetForm}
-                      className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors border border-white/15 flex-1 sm:flex-none cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors border border-white/15 cursor-pointer text-center"
                       title="Kosongkan seluruh kolom form untuk upload baru"
                     >
                       Reset Form
@@ -2329,7 +2331,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                       type="button"
                       disabled={isPublishing || !formData.title.trim() || !formData.url.trim()}
                       onClick={handlePublish}
-                      className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-blue-400/40 shadow-lg shadow-blue-600/30 flex-1 sm:flex-none cursor-pointer hover:scale-105 active:scale-95"
+                      className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-blue-400/40 shadow-lg shadow-blue-600/30 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
                       {isPublishing ? (
                         <>
