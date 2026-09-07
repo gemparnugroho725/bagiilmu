@@ -97,25 +97,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <span className="leading-snug">{reason}</span>
           </div>
         )}
-
-        {/* Credentials Info Badge */}
-        <div className="mb-5 p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-blue-400 text-[20px]">key</span>
-            <div className="text-xs">
-              <span className="text-zinc-400 block font-normal text-[11px]">Kredensial Resmi Admin:</span>
-              <span className="text-white font-mono font-bold tracking-wider">spar12 : spar12</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleAutofill}
-            className="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 hover:text-blue-200 text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer"
-          >
-            Autofill
-          </button>
-        </div>
-
         {/* Error Alert */}
         {errorMsg && (
           <div className="mb-4 p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-300 text-xs flex items-center gap-2 animate-shake">

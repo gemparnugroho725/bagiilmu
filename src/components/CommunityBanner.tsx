@@ -5,12 +5,14 @@ interface CommunityBannerProps {
   onSubmitCourse: () => void;
   onBrowseSubmissions: () => void;
   language: Language;
+  totalCourses: number;
 }
 
 export const CommunityBanner: React.FC<CommunityBannerProps> = ({
   onSubmitCourse,
   onBrowseSubmissions,
   language,
+  totalCourses,
 }) => {
   const t = translations[language];
 
@@ -48,7 +50,9 @@ export const CommunityBanner: React.FC<CommunityBannerProps> = ({
                   library_books
                 </span>
                 <span className="font-black uppercase tracking-wider text-xs">
-                  {t.community.curatedCoursesCount}
+                  {language === 'id' 
+                    ? `${totalCourses}+ Kursus Terkurasi` 
+                    : `${totalCourses}+ Curated Courses`}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-zinc-200">

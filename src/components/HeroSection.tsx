@@ -9,6 +9,7 @@ interface HeroSectionProps {
   onSearchSubmit: () => void;
   language: Language;
   onOpenDesignSpecs?: () => void;
+  totalCourses: number;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -19,6 +20,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onSearchSubmit,
   language,
   onOpenDesignSpecs,
+  totalCourses,
 }) => {
   const t = translations[language];
 
@@ -56,7 +58,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </span>
           <span className="text-zinc-600">•</span>
           <span className="text-[11px] text-emerald-400 font-black uppercase tracking-wider">
-            {t.hero.indexedCount}
+            {language === 'id' 
+              ? `${totalCourses} Kursus Gratis Terindeks` 
+              : `${totalCourses} Free Courses Indexed`}
           </span>
         </div>
 

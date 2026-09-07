@@ -14,6 +14,8 @@ interface FilterToolbarProps {
   language: Language;
   activeProgressFilter?: string;
   onSelectProgressFilter?: (status: string) => void;
+  activeSort: string;
+  onSelectSort: (sort: string) => void;
 }
 
 export const FilterToolbar: React.FC<FilterToolbarProps> = ({
@@ -28,6 +30,8 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   language,
   activeProgressFilter = 'all',
   onSelectProgressFilter,
+  activeSort,
+  onSelectSort,
 }) => {
   const t = translations[language];
 
@@ -124,6 +128,24 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                 <option value="Beginner" className="bg-[#090d16] text-white">{t.filters.beginner}</option>
                 <option value="Intermediate" className="bg-[#090d16] text-white">{t.filters.intermediate}</option>
                 <option value="Advanced" className="bg-[#090d16] text-white">{t.filters.advanced}</option>
+              </select>
+            </div>
+
+            {/* Sort Selector */}
+            <div className="flex items-center gap-1.5 text-xs text-zinc-400 shrink-0">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                {t.filters.sortLabel}:
+              </span>
+              <select
+                value={activeSort}
+                onChange={(e) => onSelectSort(e.target.value)}
+                className="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-black uppercase tracking-wider text-white px-3 py-2 rounded-xl sm:rounded-full cursor-pointer focus:outline-none transition-colors min-h-[38px]"
+              >
+                <option value="default" className="bg-[#090d16] text-white">{t.filters.sortDefault}</option>
+                <option value="alphabetical" className="bg-[#090d16] text-white">{t.filters.sortAlphabetical}</option>
+                <option value="alphabetical_desc" className="bg-[#090d16] text-white">{t.filters.sortAlphabeticalDesc}</option>
+                <option value="latest" className="bg-[#090d16] text-white">{t.filters.sortLatest}</option>
+                <option value="oldest" className="bg-[#090d16] text-white">{t.filters.sortOldest}</option>
               </select>
             </div>
 

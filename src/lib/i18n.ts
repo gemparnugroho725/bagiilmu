@@ -59,6 +59,12 @@ export interface Translations {
     beginner: string;
     intermediate: string;
     advanced: string;
+    sortLabel: string;
+    sortDefault: string;
+    sortAlphabetical: string;
+    sortAlphabeticalDesc: string;
+    sortLatest: string;
+    sortOldest: string;
   };
   card: {
     freeCert: string;
@@ -203,6 +209,12 @@ export const translations: Record<Language, Translations> = {
       beginner: 'Pemula (Beginner)',
       intermediate: 'Menengah (Intermediate)',
       advanced: 'Lanjutan (Advanced)',
+      sortLabel: 'Urutan',
+      sortDefault: 'Bawaan',
+      sortAlphabetical: 'Abjad (A-Z)',
+      sortAlphabeticalDesc: 'Abjad (Z-A)',
+      sortLatest: 'Terbaru',
+      sortOldest: 'Terlama',
     },
     card: {
       freeCert: 'Sertifikat Gratis',
@@ -345,6 +357,12 @@ export const translations: Record<Language, Translations> = {
       beginner: 'Beginner',
       intermediate: 'Intermediate',
       advanced: 'Advanced',
+      sortLabel: 'Sort',
+      sortDefault: 'Default',
+      sortAlphabetical: 'Alphabetical (A-Z)',
+      sortAlphabeticalDesc: 'Alphabetical (Z-A)',
+      sortLatest: 'Latest',
+      sortOldest: 'Oldest',
     },
     card: {
       freeCert: 'Free Certificate',

@@ -48,6 +48,7 @@ export default function App() {
   const [activeSubFilter, setActiveSubFilter] = useState<SubFilter>('all');
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>('all');
   const [activeProgressFilter, setActiveProgressFilter] = useState<string>('all');
+  const [activeSort, setActiveSort] = useState<string>('default');
   const [cardDensity, setCardDensity] = useState<'comfortable' | 'compact'>('comfortable');
 
   // Learning progress tracker state
@@ -366,7 +367,7 @@ export default function App() {
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
-    return courses.filter((course) => {
+    const result = courses.filter((course) => {
       // Category filter
       if (activeCategory !== 'all' && course.category !== activeCategory) {
         return false;
@@ -421,7 +422,54 @@ export default function App() {
 
       return true;
     });
-  }, [courses, activeCategory, selectedPlatform, activeLevelFilter, activeSubFilter, searchQuery, activeProgressFilter, userCourseProgress]);
+
+    // Apply sorting
+    if (activeSort === 'alphabetical') {
+      result.sort((a, b) => a.title.localeCompare(b.title, language === 'id' ? 'id' : 'en'));
+    } else if (activeSort === 'alphabetical_desc') {
+      result.sort((a, b) => b.title.localeCompare(a.title, language === 'id' ? 'id' : 'en'));
+    } else if (activeSort === 'latest') {
+      result.sort((a, b) => {
+        const idA = a.id;
+        const idB = b.id;
+        const isDefaultA = idA.startsWith('course-');
+        const isDefaultB = idB.startsWith('course-');
+
+        // Non-default custom IDs (e.g., Firestore random strings) are considered newer than 'course-X'
+        if (isDefaultA && !isDefaultB) return 1;
+        if (!isDefaultA && isDefaultB) return -1;
+
+        if (isDefaultA && isDefaultB) {
+          const numA = parseInt(idA.replace('course-', ''), 10) || 0;
+          const numB = parseInt(idB.replace('course-', ''), 10) || 0;
+          return numB - numA; // Higher number is newer
+        }
+
+        return idB.localeCompare(idA);
+      });
+    } else if (activeSort === 'oldest') {
+      result.sort((a, b) => {
+        const idA = a.id;
+        const idB = b.id;
+        const isDefaultA = idA.startsWith('course-');
+        const isDefaultB = idB.startsWith('course-');
+
+        // Default IDs are older than custom added ones
+        if (isDefaultA && !isDefaultB) return -1;
+        if (!isDefaultA && isDefaultB) return 1;
+
+        if (isDefaultA && isDefaultB) {
+          const numA = parseInt(idA.replace('course-', ''), 10) || 0;
+          const numB = parseInt(idB.replace('course-', ''), 10) || 0;
+          return numA - numB; // Lower number is older
+        }
+
+        return idA.localeCompare(idB);
+      });
+    }
+
+    return result;
+  }, [courses, activeCategory, selectedPlatform, activeLevelFilter, activeSubFilter, searchQuery, activeProgressFilter, userCourseProgress, activeSort, language]);
 
   const handleToggleBookmark = (courseId: string) => {
     setBookmarkedIds((prev) => {
@@ -608,6 +656,7 @@ export default function App() {
             }}
             language={language}
             onOpenDesignSpecs={() => setShowDesignSpecsModal(true)}
+            totalCourses={courses.length}
           />
 
           {/* Tracks Filter Rail & Sort */}
@@ -625,10 +674,12 @@ export default function App() {
             activeLevelFilter={activeLevelFilter}
             onSelectLevelFilter={setActiveLevelFilter}
             matchCount={filteredCourses.length}
-            totalCatalogCount="2.480"
+            totalCatalogCount={courses.length.toString()}
             language={language}
             activeProgressFilter={activeProgressFilter}
             onSelectProgressFilter={setActiveProgressFilter}
+            activeSort={activeSort}
+            onSelectSort={setActiveSort}
           />
 
           {/* Catalog Grid Section */}
@@ -746,6 +797,7 @@ export default function App() {
             onSubmitCourse={handleRequestSubmitCourse}
             onBrowseSubmissions={() => setShowSubmissionsModal(true)}
             language={language}
+            totalCourses={courses.length}
           />
 
           {/* Footer */}
