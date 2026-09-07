@@ -15,12 +15,12 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { BookmarksModal } from './components/BookmarksModal';
 import { DesignSystemModal } from './components/DesignSystemModal';
 import { 
-  subscribeToCourses, 
-  seedCoursesIfEmpty, 
-  addCourseToFirestore, 
-  deleteCourseFromFirestore,
-  clearAllCourses
-} from './lib/firebase';
+  subscribeToCoursesDb, 
+  seedCoursesIfEmptyDb, 
+  addCourseToDb, 
+  deleteCourseFromDb,
+  clearAllCoursesDb
+} from './lib/db';
 
 export default function App() {
   // Localization: 'id' (Bahasa Indonesia) is Default as required
@@ -128,16 +128,16 @@ export default function App() {
     };
   }, [isAdminLoggedIn, language]);
 
-  // Real-time Firestore sync & initial database seeding
+  // Real-time Database sync & initial database seeding
   useEffect(() => {
-    seedCoursesIfEmpty(INITIAL_COURSES);
+    seedCoursesIfEmptyDb(INITIAL_COURSES);
 
-    const unsubscribe = subscribeToCourses(
-      (firestoreCourses) => {
-        setCourses(firestoreCourses);
+    const unsubscribe = subscribeToCoursesDb(
+      (dbCourses) => {
+        setCourses(dbCourses);
       },
       (err) => {
-        console.warn('Firestore snapshot error, using local fallback:', err);
+        console.warn('Database snapshot error, using local fallback:', err);
       }
     );
 
@@ -292,15 +292,15 @@ export default function App() {
 
   const handlePublishNewCourse = async (newCourse: Course) => {
     try {
-      const saved = await addCourseToFirestore(newCourse);
+      const saved = await addCourseToDb(newCourse);
       setCourses((prev) => [saved, ...prev.filter((c) => c.id !== saved.id)]);
       showToast(
         language === 'id'
-          ? `Kursus "${saved.title}" berhasil dipublikasikan ke Firestore!`
-          : `Course "${saved.title}" successfully published to Firestore!`
+          ? `Kursus "${saved.title}" berhasil dipublikasikan ke database!`
+          : `Course "${saved.title}" successfully published to database!`
       );
     } catch (err) {
-      console.error('Firestore save failed, fallback to local:', err);
+      console.error('Database save failed, fallback to local:', err);
       setCourses((prev) => [newCourse, ...prev]);
       showToast(`Kursus "${newCourse.title}" berhasil ditambahkan.`);
     }
@@ -317,13 +317,13 @@ export default function App() {
 
   const handleDeleteCourse = async (courseId: string) => {
     try {
-      await deleteCourseFromFirestore(courseId);
+      await deleteCourseFromDb(courseId);
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
       showToast(
         language === 'id' ? 'Kursus berhasil dihapus dari database.' : 'Course deleted from database.'
       );
     } catch (err) {
-      console.error('Failed to delete course from Firestore:', err);
+      console.error('Failed to delete course from database:', err);
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
       showToast('Kursus dihapus.');
     }
@@ -331,7 +331,7 @@ export default function App() {
 
   const handleClearDatabase = async () => {
     try {
-      await clearAllCourses();
+      await clearAllCoursesDb();
       showToast(
         language === 'id' ? 'Database berhasil dikosongkan.' : 'Database cleared successfully.'
       );
@@ -344,7 +344,7 @@ export default function App() {
   const handleResetToSample = async () => {
     try {
       localStorage.removeItem('bagiilmu_db_cleared_by_admin');
-      await seedCoursesIfEmpty(INITIAL_COURSES);
+      await seedCoursesIfEmptyDb(INITIAL_COURSES);
       showToast(
         language === 'id' ? 'Sampel data berhasil dimuat ulang.' : 'Sample data reloaded successfully.'
       );
