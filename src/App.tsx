@@ -76,6 +76,7 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginReason, setLoginReason] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [editingCourseForConsole, setEditingCourseForConsole] = useState<Course | null>(null);
 
   const t = translations[language];
 
@@ -397,7 +398,10 @@ export default function App() {
       {currentView === 'curator' ? (
         /* CURATOR HUB CONSOLE */
         <CuratorConsole
-          onBackToCatalog={() => setCurrentView('public')}
+          onBackToCatalog={() => {
+            setCurrentView('public');
+            setEditingCourseForConsole(null);
+          }}
           onPublishCourse={handlePublishNewCourse}
           courses={courses}
           onDeleteCourse={handleDeleteCourse}
@@ -405,6 +409,7 @@ export default function App() {
           onResetToSample={handleResetToSample}
           adminUsername={adminUsername}
           onLogout={handleLogout}
+          initialEditingCourse={editingCourseForConsole}
         />
       ) : (
         /* PUBLIC DIRECTORY & CATALOG */
@@ -486,6 +491,14 @@ export default function App() {
                       course={course}
                       onEnroll={(c) => setSelectedCourseForEnroll(c)}
                       onDelete={isAdminLoggedIn ? handleDeleteCourse : undefined}
+                      onEdit={
+                        isAdminLoggedIn
+                          ? (c) => {
+                              setEditingCourseForConsole(c);
+                              setCurrentView('curator');
+                            }
+                          : undefined
+                      }
                       isBookmarked={bookmarkedIds.includes(course.id)}
                       onToggleBookmark={handleToggleBookmark}
                       language={language}

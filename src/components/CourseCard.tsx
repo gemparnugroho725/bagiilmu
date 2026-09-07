@@ -6,6 +6,7 @@ interface CourseCardProps {
   course: Course;
   onEnroll: (course: Course) => void;
   onDelete?: (courseId: string) => void;
+  onEdit?: (course: Course) => void;
   isBookmarked?: boolean;
   onToggleBookmark?: (courseId: string) => void;
   language: Language;
@@ -16,6 +17,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   course,
   onEnroll,
   onDelete,
+  onEdit,
   isBookmarked = false,
   onToggleBookmark,
   language,
@@ -184,6 +186,17 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 >
                   bookmark
                 </span>
+              </button>
+            )}
+
+            {onEdit && (
+              <button
+                onClick={() => onEdit(course)}
+                className="inline-flex items-center gap-1.5 border border-blue-500/40 hover:bg-blue-500/10 active:bg-blue-500/20 text-blue-400 text-xs sm:text-[11px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all cursor-pointer min-h-[44px] active:scale-95"
+                title={language === 'id' ? 'Edit data kursus' : 'Edit course data'}
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span>
+                <span>{language === 'id' ? 'EDIT' : 'EDIT'}</span>
               </button>
             )}
 

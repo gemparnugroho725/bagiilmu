@@ -21,6 +21,7 @@ interface CuratorConsoleProps {
   onResetToSample?: () => Promise<void> | void;
   adminUsername?: string;
   onLogout?: () => void;
+  initialEditingCourse?: Course | null;
 }
 
 const DEFAULT_CATEGORY_OPTIONS = [
@@ -58,6 +59,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
   onResetToSample,
   adminUsername = 'spar12',
   onLogout,
+  initialEditingCourse,
 }) => {
   // Form state - Default empty fields with placeholders for clean user input
   const [formData, setFormData] = useState<CuratorFormData>({
@@ -843,6 +845,70 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     }, 3500);
   };
 
+  // Editing state
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(initialEditingCourse?.id || null);
+
+  useEffect(() => {
+    if (initialEditingCourse) {
+      handleStartEditCourse(initialEditingCourse);
+    }
+  }, [initialEditingCourse]);
+
+  const handleStartEditCourse = (course: Course) => {
+    setFormData({
+      title: course.title || '',
+      platform: course.provider || 'freeCodeCamp',
+      url: course.url || '',
+      instructor: '',
+      language: 'English',
+      level: course.level || 'Intermediate',
+      accessTier: course.hasCertificate ? '100% Free with Certificate' : 'Free Audit Only',
+      noCreditCardConfirmed: true,
+      accessDuration: 'lifetime',
+      primaryCategory: course.categoryLabel || 'Web Development & Engineering',
+      duration: course.duration || '',
+      isSelfPaced: true,
+      skills: course.skills || [],
+      description: course.description || '',
+      thumbnailUrl:
+        course.image ||
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+      thumbnailFilename: 'edited-course-cover.webp',
+      thumbnailDimensions: '1920 × 1080 px',
+      thumbnailSize: '142 KB',
+    });
+    setEditingCourseId(course.id);
+    setActiveNav('submit');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToastNotification(`Mode Edit diaktifkan untuk: "${course.title}". Silakan sesuaikan data.`);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCourseId(null);
+    setFormData({
+      title: '',
+      platform: 'freeCodeCamp',
+      url: '',
+      instructor: '',
+      language: 'English',
+      level: 'Intermediate',
+      accessTier: '100% Free with Certificate',
+      noCreditCardConfirmed: true,
+      accessDuration: 'lifetime',
+      primaryCategory: 'Web Development & Engineering',
+      duration: '',
+      isSelfPaced: true,
+      skills: [],
+      description: '',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+      thumbnailFilename: 'sampul-kursus.webp',
+      thumbnailDimensions: '1920 × 1080 px',
+      thumbnailSize: '142 KB',
+    });
+    showToastNotification('Mode edit dibatalkan. Kembali ke formulir baru.');
+  };
+
   const handleResetForm = () => {
     setFormData({
       title: '',
@@ -865,6 +931,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
       thumbnailDimensions: '1920 × 1080 px',
       thumbnailSize: '142 KB',
     });
+    setEditingCourseId(null);
     setSelectedSubmissionId(null);
     showToastNotification('Formulir di-reset! Siap mengunggah kursus baru.');
   };
@@ -896,8 +963,8 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
         catKey = 'mobile';
       }
 
-      const newCourse: Course = {
-        id: `course-${Date.now()}`,
+      const courseToSave: Course = {
+        id: editingCourseId || `course-${Date.now()}`,
         title: formData.title.trim(),
         provider: formData.platform,
         platform: formData.platform.toLowerCase(),
@@ -918,7 +985,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
         skills: formData.skills,
       };
 
-      await onPublishCourse(newCourse);
+      await onPublishCourse(courseToSave);
 
       if (selectedSubmissionId) {
         setPendingSubmissions((prev) =>
@@ -926,15 +993,28 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
         );
       }
 
-      createAuditLog({
-        user: adminUsername || 'spar12',
-        action: 'COURSE_PUBLISHED',
-        actionLabel: 'Publikasi Kursus',
-        target: newCourse.title,
-        details: `Disimpan permanen ke Cloud Firestore collection "courses" (${newCourse.provider})`,
-        status: 'SUCCESS',
-      });
-      showToastNotification('Kursus berhasil disimpan permanen ke database Cloud Firestore!');
+      if (editingCourseId) {
+        createAuditLog({
+          user: adminUsername || 'spar12',
+          action: 'COURSE_PUBLISHED',
+          actionLabel: 'Perbarui Kursus',
+          target: courseToSave.title,
+          details: `Perubahan berhasil diperbarui di Cloud Firestore (ID: ${editingCourseId})`,
+          status: 'SUCCESS',
+        });
+        showToastNotification(`Perubahan "${courseToSave.title}" berhasil diperbarui di Cloud Firestore!`);
+        setEditingCourseId(null);
+      } else {
+        createAuditLog({
+          user: adminUsername || 'spar12',
+          action: 'COURSE_PUBLISHED',
+          actionLabel: 'Publikasi Kursus',
+          target: courseToSave.title,
+          details: `Disimpan permanen ke Cloud Firestore collection "courses" (${courseToSave.provider})`,
+          status: 'SUCCESS',
+        });
+        showToastNotification('Kursus baru berhasil disimpan permanen ke database Cloud Firestore!');
+      }
     } catch (err) {
       console.error(err);
       showToastNotification('Gagal menyimpan ke database Firestore. Coba lagi.');
@@ -1386,7 +1466,7 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3">
+                        <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap">
                           <a
                             href={course.url}
                             target="_blank"
@@ -1397,28 +1477,40 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                             <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                           </a>
 
-                          <button
-                            type="button"
-                            disabled={deletingCourseId === course.id}
-                            onClick={async () => {
-                              if (confirm(`Yakin ingin menghapus "${course.title}" dari database Cloud Firestore?`)) {
-                                setDeletingCourseId(course.id);
-                                try {
-                                  await onDeleteCourse?.(course.id);
-                                  showToastNotification(`Kursus "${course.title}" berhasil dihapus dari Cloud Firestore.`);
-                                } catch (err) {
-                                  console.error(err);
-                                  showToastNotification('Gagal menghapus kursus dari database.');
-                                } finally {
-                                  setDeletingCourseId(null);
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditCourse(course)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                              title="Edit data kursus ini"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                              <span>Edit</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={deletingCourseId === course.id}
+                              onClick={async () => {
+                                if (confirm(`Yakin ingin menghapus "${course.title}" dari database Cloud Firestore?`)) {
+                                  setDeletingCourseId(course.id);
+                                  try {
+                                    await onDeleteCourse?.(course.id);
+                                    showToastNotification(`Kursus "${course.title}" berhasil dihapus dari Cloud Firestore.`);
+                                  } catch (err) {
+                                    console.error(err);
+                                    showToastNotification('Gagal menghapus kursus dari database.');
+                                  } finally {
+                                    setDeletingCourseId(null);
+                                  }
                                 }
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/60 border border-red-500/40 text-red-300 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                            <span>{deletingCourseId === course.id ? 'Menghapus...' : 'Hapus'}</span>
-                          </button>
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/60 border border-red-500/40 text-red-300 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              <span>{deletingCourseId === course.id ? 'Menghapus...' : 'Hapus'}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1598,6 +1690,36 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
             {/* VIEW: SUBMIT FORM (activeNav === 'submit') */}
             {activeNav === 'submit' && (
               <>
+                {/* Mode Edit Banner */}
+                {editingCourseId && (
+                  <div className="rounded-2xl bg-amber-950/70 p-4 sm:p-5 mb-6 border border-amber-500/50 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                        <span className="material-symbols-outlined text-[24px]">edit_note</span>
+                      </div>
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-white flex items-center gap-2">
+                          <span>Mode Edit Kursus Aktif</span>
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-500/40">
+                            Firestore Doc
+                          </span>
+                        </h3>
+                        <p className="text-xs text-amber-200/80 font-mono mt-0.5">
+                          ID Dokumen: <span className="font-bold text-amber-300">{editingCourseId}</span> — Perubahan akan langsung disimpan ke Cloud Firestore.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-black uppercase tracking-wider transition-colors border border-white/20 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">cancel</span>
+                      <span>Batalkan Edit</span>
+                    </button>
+                  </div>
+                )}
 
             {/* Auto-Extraction Engine Banner */}
             {showAutoScrapeBanner && (
@@ -2301,18 +2423,22 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                 <div className="bg-[#0d0d0d] rounded-2xl p-5 sm:p-7 shadow-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-[#0d0d0d] to-purple-950/30 flex flex-col gap-5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0 shadow-md">
-                        <span className="material-symbols-outlined text-[24px]">cloud_upload</span>
+                      <div className={`w-11 h-11 rounded-2xl ${editingCourseId ? 'bg-amber-600/20 text-amber-400 border-amber-500/40' : 'bg-blue-600/20 text-blue-400 border-blue-500/40'} border flex items-center justify-center shrink-0 shadow-md`}>
+                        <span className="material-symbols-outlined text-[24px]">
+                          {editingCourseId ? 'edit_document' : 'cloud_upload'}
+                        </span>
                       </div>
                       <div>
                         <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2 flex-wrap">
-                          <span>Publikasikan &amp; Upload Kursus</span>
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider">
-                            Firestore Live
+                          <span>{editingCourseId ? 'Simpan Perubahan Data Kursus' : 'Publikasikan & Upload Kursus'}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full ${editingCourseId ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'} border text-[10px] font-black uppercase tracking-wider`}>
+                            {editingCourseId ? 'Mode Edit' : 'Firestore Live'}
                           </span>
                         </h2>
                         <p className="text-xs text-zinc-400 font-normal">
-                          Simpan permanen ke database Cloud Firestore &amp; langsung tampil di katalog publik
+                          {editingCourseId
+                            ? `Memperbarui dokumen Firestore ID "${editingCourseId}" & memperbarui katalog`
+                            : 'Simpan permanen ke database Cloud Firestore & langsung tampil di katalog publik'}
                         </p>
                       </div>
                     </div>
@@ -2321,27 +2447,33 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
                   <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
                     <button
                       type="button"
-                      onClick={handleResetForm}
+                      onClick={editingCourseId ? handleCancelEdit : handleResetForm}
                       className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-colors border border-white/15 cursor-pointer text-center"
-                      title="Kosongkan seluruh kolom form untuk upload baru"
+                      title={editingCourseId ? "Batalkan mode edit" : "Kosongkan seluruh kolom form untuk upload baru"}
                     >
-                      Reset Form
+                      {editingCourseId ? 'Batalkan Edit' : 'Reset Form'}
                     </button>
                     <button
                       type="button"
                       disabled={isPublishing || !formData.title.trim() || !formData.url.trim()}
                       onClick={handlePublish}
-                      className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-blue-400/40 shadow-lg shadow-blue-600/30 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                      className={`w-full sm:w-auto px-6 py-3 rounded-xl ${
+                        editingCourseId
+                          ? 'bg-amber-600 hover:bg-amber-500 border-amber-400/40 shadow-amber-600/30'
+                          : 'bg-blue-600 hover:bg-blue-500 border-blue-400/40 shadow-blue-600/30'
+                      } disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border shadow-lg cursor-pointer hover:scale-[1.02] active:scale-[0.98]`}
                     >
                       {isPublishing ? (
                         <>
                           <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
-                          <span>Mengunggah...</span>
+                          <span>{editingCourseId ? 'Memperbarui...' : 'Mengunggah...'}</span>
                         </>
                       ) : (
                         <>
-                          <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                          <span>+ Upload Course Baru</span>
+                          <span className="material-symbols-outlined text-[18px]">
+                            {editingCourseId ? 'save' : 'add_circle'}
+                          </span>
+                          <span>{editingCourseId ? 'Simpan Perubahan (Update)' : '+ Upload Course Baru'}</span>
                         </>
                       )}
                     </button>
