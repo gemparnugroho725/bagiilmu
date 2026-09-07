@@ -8,11 +8,12 @@ import {
   addDoc, 
   deleteDoc, 
   getDocs, 
+  getDoc,
   serverTimestamp, 
   Firestore,
   writeBatch
 } from 'firebase/firestore';
-import { Course } from '../types';
+import { Course, PendingSubmission, UserCourseProgressMap } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 let app: FirebaseApp;
@@ -28,6 +29,8 @@ export const db: Firestore = firebaseConfig.firestoreDatabaseId && firebaseConfi
   : getFirestore(app);
 
 const COURSES_COLLECTION = 'courses';
+const SUBMISSIONS_COLLECTION = 'pending_submissions';
+const USER_PROGRESS_COLLECTION = 'user_progress';
 
 /**
  * Seed initial courses into Firestore if the collection is currently empty
@@ -187,3 +190,204 @@ export async function clearAllCourses(): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Add a new Community Submission to Firestore (for User Role)
+ */
+export async function addPendingSubmissionToFirestore(
+  submission: Omit<PendingSubmission, 'id'> & { id?: string }
+): Promise<PendingSubmission> {
+  const colRef = collection(db, SUBMISSIONS_COLLECTION);
+  const payload = {
+    ...submission,
+    createdAt: serverTimestamp(),
+  };
+
+  if (submission.id) {
+    const docRef = doc(db, SUBMISSIONS_COLLECTION, submission.id);
+    await setDoc(docRef, payload);
+    return { ...submission, id: submission.id };
+  } else {
+    const docRef = await addDoc(colRef, payload);
+    return { ...submission, id: docRef.id };
+  }
+}
+
+/**
+ * Subscribe to Pending Submissions from Firestore
+ */
+export function subscribeToPendingSubmissions(
+  onSubmissionsReceived: (submissions: PendingSubmission[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const colRef = collection(db, SUBMISSIONS_COLLECTION);
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const submissionsList: PendingSubmission[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        submissionsList.push({
+          id: docSnap.id,
+          author: data.author || 'Komunitas Pelajar',
+          authorRole: data.authorRole || 'Community Member',
+          avatar: data.avatar || 'KM',
+          submittedTime: data.submittedTime || 'Baru saja',
+          note: data.note || '',
+          title: data.title || 'Untitled Submission',
+          provider: data.provider || 'External Provider',
+          platform: data.platform || 'other',
+          url: data.url || '#',
+          category: data.category || 'webdev',
+          categoryLabel: data.categoryLabel || 'General',
+          level: data.level || 'Intermediate',
+          duration: data.duration || 'Self-paced',
+          hasCertificate: Boolean(data.hasCertificate),
+          accessTier: data.accessTier || 'free_cert',
+          accessBadgeText: data.accessBadgeText || 'Free Access',
+          description: data.description || '',
+          skills: Array.isArray(data.skills) ? data.skills : [],
+          status: data.status || 'pending',
+          image: data.image || '',
+        });
+      });
+      onSubmissionsReceived(submissionsList);
+    },
+    (err) => {
+      console.error('Firestore pending submissions subscription error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * Update Submission Status in Firestore (Admin ACC / Reject)
+ */
+export async function updateSubmissionStatusInFirestore(
+  submissionId: string,
+  newStatus: 'approved' | 'rejected'
+): Promise<void> {
+  const docRef = doc(db, SUBMISSIONS_COLLECTION, submissionId);
+  await setDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/**
+ * Save / Sync User Course Progress to Firestore
+ */
+export async function saveUserProgressToFirestore(
+  userId: string,
+  progressMap: UserCourseProgressMap
+): Promise<void> {
+  try {
+    const docRef = doc(db, USER_PROGRESS_COLLECTION, userId);
+    await setDoc(docRef, { progress: progressMap, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn('Unable to sync progress to Firestore:', err);
+  }
+}
+
+/**
+ * Get User Course Progress from Firestore
+ */
+export async function getUserProgressFromFirestore(
+  userId: string
+): Promise<UserCourseProgressMap | null> {
+  try {
+    const docRef = doc(db, USER_PROGRESS_COLLECTION, userId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return (snap.data().progress as UserCourseProgressMap) || null;
+    }
+  } catch (err) {
+    console.warn('Unable to get user progress from Firestore:', err);
+  }
+  return null;
+}
+
+const REGISTERED_USERS_COLLECTION = 'registered_users';
+
+/**
+ * Register a new user in Firestore
+ */
+export async function registerUserToFirestore(
+  username: string,
+  email: string,
+  password: string,
+  fullName: string
+): Promise<{ 
+  username: string; 
+  email: string; 
+  fullName: string; 
+  avatarType?: 'initials' | 'character' | 'custom';
+  characterId?: 'wizard' | 'explorer' | 'analyst' | 'guardian' | 'artist';
+  avatarUrl?: string;
+}> {
+  const cleanUsername = username.trim().toLowerCase();
+  const userDocRef = doc(db, REGISTERED_USERS_COLLECTION, cleanUsername);
+  
+  const userSnap = await getDoc(userDocRef);
+  if (userSnap.exists()) {
+    throw new Error('Username sudah terdaftar! Silakan gunakan username lain.');
+  }
+
+  const payload = {
+    username: cleanUsername,
+    email: email.trim(),
+    password: password.trim(), // Storing as plaintext for educational app prototype
+    fullName: fullName.trim(),
+    createdAt: serverTimestamp(),
+  };
+
+  await setDoc(userDocRef, payload);
+  return {
+    username: cleanUsername,
+    email: payload.email,
+    fullName: payload.fullName,
+    avatarType: 'initials',
+    characterId: 'wizard',
+    avatarUrl: '',
+  };
+}
+
+/**
+ * Authenticate a user from Firestore
+ */
+export async function authenticateUserInFirestore(
+  username: string,
+  password: string
+): Promise<{ username: string; email: string; fullName: string; avatarType?: 'initials' | 'character' | 'custom'; characterId?: 'wizard' | 'explorer' | 'analyst' | 'guardian' | 'artist'; avatarUrl?: string }> {
+  const cleanUsername = username.trim().toLowerCase();
+  const userDocRef = doc(db, REGISTERED_USERS_COLLECTION, cleanUsername);
+  
+  const userSnap = await getDoc(userDocRef);
+  if (!userSnap.exists()) {
+    throw new Error('Username tidak ditemukan! Pastikan Anda sudah mendaftar.');
+  }
+
+  const data = userSnap.data();
+  if (data.password !== password.trim()) {
+    throw new Error('Password salah! Silakan coba lagi.');
+  }
+
+  return {
+    username: data.username,
+    email: data.email || '',
+    fullName: data.fullName || data.username,
+    avatarType: data.avatarType || 'initials',
+    characterId: data.characterId || 'wizard',
+    avatarUrl: data.avatarUrl || '',
+  };
+}
+
+/**
+ * Update user profile in Firestore
+ */
+export async function updateUserProfileInFirestore(
+  username: string,
+  updates: { fullName: string; email: string; avatarType?: 'initials' | 'character' | 'custom'; characterId?: 'wizard' | 'explorer' | 'analyst' | 'guardian' | 'artist'; avatarUrl?: string }
+): Promise<void> {
+  const cleanUsername = username.trim().toLowerCase();
+  const userDocRef = doc(db, REGISTERED_USERS_COLLECTION, cleanUsername);
+  await setDoc(userDocRef, updates, { merge: true });
+}
+

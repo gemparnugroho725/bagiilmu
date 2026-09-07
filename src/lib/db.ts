@@ -12,10 +12,29 @@ import {
   addCourseToFirestore, 
   deleteCourseFromFirestore, 
   clearAllCourses as clearAllFirestoreCourses, 
-  seedCoursesIfEmpty as seedFirestoreIfEmpty 
+  seedCoursesIfEmpty as seedFirestoreIfEmpty,
+  addPendingSubmissionToFirestore,
+  subscribeToPendingSubmissions,
+  updateSubmissionStatusInFirestore,
+  saveUserProgressToFirestore,
+  getUserProgressFromFirestore,
+  registerUserToFirestore,
+  authenticateUserInFirestore,
+  updateUserProfileInFirestore
 } from './firebase';
 
 export { isSupabaseConfigured };
+
+export { 
+  addPendingSubmissionToFirestore, 
+  subscribeToPendingSubmissions, 
+  updateSubmissionStatusInFirestore, 
+  saveUserProgressToFirestore,
+  getUserProgressFromFirestore,
+  registerUserToFirestore,
+  authenticateUserInFirestore,
+  updateUserProfileInFirestore
+};
 
 export async function seedCoursesIfEmptyDb(initialCourses: Course[]): Promise<void> {
   if (isSupabaseConfigured) {

@@ -12,6 +12,8 @@ interface FilterToolbarProps {
   matchCount: number;
   totalCatalogCount?: string;
   language: Language;
+  activeProgressFilter?: string;
+  onSelectProgressFilter?: (status: string) => void;
 }
 
 export const FilterToolbar: React.FC<FilterToolbarProps> = ({
@@ -24,6 +26,8 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   matchCount,
   totalCatalogCount = '2.480',
   language,
+  activeProgressFilter = 'all',
+  onSelectProgressFilter,
 }) => {
   const t = translations[language];
 
@@ -81,6 +85,31 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
           {/* Level Filter & Sub-Filter Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* Progress Selector */}
+            {onSelectProgressFilter && (
+              <div className="flex items-center gap-1.5 text-xs text-zinc-400 shrink-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                  {language === 'id' ? 'Progress' : 'Progress'}:
+                </span>
+                <select
+                  value={activeProgressFilter}
+                  onChange={(e) => onSelectProgressFilter(e.target.value)}
+                  className={`border text-xs font-black uppercase tracking-wider px-3 py-2 rounded-xl sm:rounded-full cursor-pointer focus:outline-none transition-colors min-h-[38px] ${
+                    activeProgressFilter === 'completed'
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                      : activeProgressFilter === 'in_progress'
+                      ? 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                      : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <option value="all" className="bg-[#090d16] text-white">Semua Progress</option>
+                  <option value="unstarted" className="bg-[#090d16] text-white">Belum Mulai</option>
+                  <option value="in_progress" className="bg-[#090d16] text-amber-300">Sedang Belajar</option>
+                  <option value="completed" className="bg-[#090d16] text-emerald-300">Selesai</option>
+                </select>
+              </div>
+            )}
+
             {/* Level Selector */}
             <div className="flex items-center gap-1.5 text-xs text-zinc-400 shrink-0">
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">

@@ -1,29 +1,7 @@
 import React, { useState } from 'react';
-import { Course } from '../../types';
+import { Course, PendingSubmission } from '../../types';
 
-export interface PendingSubmission {
-  id: string;
-  author: string;
-  authorRole: string;
-  avatar: string;
-  submittedTime: string;
-  note: string;
-  title: string;
-  provider: string;
-  platform: string;
-  url: string;
-  category: Course['category'];
-  categoryLabel: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
-  duration: string;
-  hasCertificate: boolean;
-  accessTier: 'free_cert' | 'audit_only' | 'oer';
-  accessBadgeText: string;
-  description: string;
-  skills: string[];
-  status: 'pending' | 'approved' | 'rejected';
-  image?: string;
-}
+export type { PendingSubmission };
 
 export const INITIAL_PENDING_SUBMISSIONS: PendingSubmission[] = [
   {

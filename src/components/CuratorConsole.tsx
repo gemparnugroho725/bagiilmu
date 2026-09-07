@@ -11,6 +11,7 @@ import { AdminPlatformIntegrations } from './admin/AdminPlatformIntegrations';
 import { AdminAnalyticsLogs } from './admin/AdminAnalyticsLogs';
 import { AdminSettings } from './admin/AdminSettings';
 import { createAuditLog } from '../lib/auditLogs';
+import { subscribeToPendingSubmissions, updateSubmissionStatusInFirestore } from '../lib/db';
 
 interface CuratorConsoleProps {
   onBackToCatalog: () => void;
@@ -593,6 +594,25 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     }
   });
 
+  // Subscribe to Firestore pending submissions in real-time
+  useEffect(() => {
+    const unsubscribe = subscribeToPendingSubmissions(
+      (firestoreSubs) => {
+        setPendingSubmissions((prev) => {
+          // Keep local mock ones that are not in firestore, but prioritize Firestore submissions
+          const nonDbSubs = INITIAL_PENDING_SUBMISSIONS.filter(
+            (mock) => !firestoreSubs.some((dbSub) => dbSub.id === mock.id)
+          );
+          return [...firestoreSubs, ...nonDbSubs];
+        });
+      },
+      (err) => {
+        console.warn('Unable to subscribe to pending submissions in Firestore:', err);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('bagiilmu_pending_submissions', JSON.stringify(pendingSubmissions));
@@ -631,6 +651,11 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     };
 
     await onPublishCourse(newCourse);
+    try {
+      await updateSubmissionStatusInFirestore(sub.id, 'approved');
+    } catch (e) {
+      console.warn('Could not update status to approved in Firestore:', e);
+    }
     setPendingSubmissions((prev) =>
       prev.map((s) => (s.id === sub.id ? { ...s, status: 'approved' } : s))
     );
@@ -645,8 +670,13 @@ export const CuratorConsole: React.FC<CuratorConsoleProps> = ({
     showToastNotification(`Kursus "${sub.title}" berhasil disetujui & dipublikasikan ke Firestore!`);
   };
 
-  const handleRejectSubmission = (submissionId: string) => {
+  const handleRejectSubmission = async (submissionId: string) => {
     const sub = pendingSubmissions.find((s) => s.id === submissionId);
+    try {
+      await updateSubmissionStatusInFirestore(submissionId, 'rejected');
+    } catch (e) {
+      console.warn('Could not update status to rejected in Firestore:', e);
+    }
     setPendingSubmissions((prev) =>
       prev.map((s) => (s.id === submissionId ? { ...s, status: 'rejected' } : s))
     );

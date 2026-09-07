@@ -14,12 +14,19 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { BookmarksModal } from './components/BookmarksModal';
 import { DesignSystemModal } from './components/DesignSystemModal';
+import { CommunitySubmissionModal } from './components/CommunitySubmissionModal';
+import { UserAuthModal } from './components/UserAuthModal';
+import { UserDashboard } from './components/UserDashboard';
 import { 
   subscribeToCoursesDb, 
   seedCoursesIfEmptyDb, 
   addCourseToDb, 
   deleteCourseFromDb,
-  clearAllCoursesDb
+  clearAllCoursesDb,
+  addPendingSubmissionToFirestore,
+  saveUserProgressToFirestore,
+  getUserProgressFromFirestore,
+  updateUserProfileInFirestore
 } from './lib/db';
 
 export default function App() {
@@ -40,7 +47,18 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [activeSubFilter, setActiveSubFilter] = useState<SubFilter>('all');
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>('all');
+  const [activeProgressFilter, setActiveProgressFilter] = useState<string>('all');
   const [cardDensity, setCardDensity] = useState<'comfortable' | 'compact'>('comfortable');
+
+  // Learning progress tracker state
+  const [userCourseProgress, setUserCourseProgress] = useState<Record<string, 'unstarted' | 'in_progress' | 'completed'>>(() => {
+    try {
+      const saved = localStorage.getItem('bagiilmu_user_progress');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   
   // Bookmarks persistence
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
@@ -74,6 +92,24 @@ export default function App() {
   });
   const [adminUsername, setAdminUsername] = useState<string>('spar12');
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // User authentication state
+  const [loggedInUser, setLoggedInUser] = useState<{ 
+    username: string; 
+    email?: string; 
+    fullName?: string;
+    avatarType?: 'initials' | 'character' | 'custom';
+    characterId?: 'wizard' | 'explorer' | 'analyst' | 'guardian' | 'artist';
+    avatarUrl?: string;
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem('bagiilmu_logged_in_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showUserAuthModal, setShowUserAuthModal] = useState(false);
   const [loginReason, setLoginReason] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [editingCourseForConsole, setEditingCourseForConsole] = useState<Course | null>(null);
@@ -154,6 +190,102 @@ export default function App() {
     }
   }, [bookmarkedIds]);
 
+  // Sync learning progress to localStorage and Firestore
+  useEffect(() => {
+    try {
+      localStorage.setItem('bagiilmu_user_progress', JSON.stringify(userCourseProgress));
+      // Save under stable ID, loggedInUser's username, or guest
+      const stableUserKey = loggedInUser?.username || localStorage.getItem('bagiilmu_admin_user') || 'guest_student';
+      saveUserProgressToFirestore(stableUserKey, userCourseProgress);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [userCourseProgress, loggedInUser]);
+
+  const handleUserAuthSuccess = async (user: { username: string; email?: string; fullName?: string }) => {
+    setLoggedInUser(user);
+    setCurrentView('dashboard');
+    try {
+      localStorage.setItem('bagiilmu_logged_in_user', JSON.stringify(user));
+    } catch (e) {
+      console.error(e);
+    }
+    showToast(
+      language === 'id' 
+        ? `Berhasil masuk sebagai @${user.username}!` 
+        : `Logged in as @${user.username}!`
+    );
+
+    // Sync cloud progress
+    try {
+      const cloudProgress = await getUserProgressFromFirestore(user.username);
+      if (cloudProgress && Object.keys(cloudProgress).length > 0) {
+        setUserCourseProgress(cloudProgress);
+        showToast(
+          language === 'id'
+            ? 'Sinkronisasi progres belajar dari akun cloud Anda berhasil!'
+            : 'Learning progress synchronized from your cloud account successfully!'
+        );
+      } else {
+        // If they have local progress, save it to cloud immediately
+        if (Object.keys(userCourseProgress).length > 0) {
+          await saveUserProgressToFirestore(user.username, userCourseProgress);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to sync progress on login:', err);
+    }
+  };
+
+  const handleUpdateProfile = async (updatedData: {
+    fullName: string;
+    email: string;
+    avatarType: 'initials' | 'character' | 'custom';
+    characterId: 'wizard' | 'explorer' | 'analyst' | 'guardian' | 'artist';
+    avatarUrl: string;
+  }) => {
+    if (!loggedInUser) return;
+    
+    // Save to Firestore
+    await updateUserProfileInFirestore(loggedInUser.username, updatedData);
+    
+    // Update local state and localStorage
+    const newUser = {
+      ...loggedInUser,
+      ...updatedData
+    };
+    
+    setLoggedInUser(newUser);
+    try {
+      localStorage.setItem('bagiilmu_logged_in_user', JSON.stringify(newUser));
+    } catch (e) {
+      console.error(e);
+    }
+    
+    showToast(
+      language === 'id'
+        ? 'Profil dan avatar Anda berhasil diperbarui!'
+        : 'Your profile and avatar have been successfully updated!'
+    );
+  };
+
+  const handleUserLogout = () => {
+    setLoggedInUser(null);
+    setCurrentView('public');
+    try {
+      localStorage.removeItem('bagiilmu_logged_in_user');
+      localStorage.removeItem('bagiilmu_user_progress');
+      setUserCourseProgress({});
+    } catch (e) {
+      console.error(e);
+    }
+    showToast(
+      language === 'id' 
+        ? 'Anda telah keluar dari akun siswa.' 
+        : 'You have logged out from student account.'
+    );
+  };
+
   const handleOpenLogin = (reason?: string) => {
     setLoginReason(reason || null);
     setShowLoginModal(true);
@@ -194,12 +326,21 @@ export default function App() {
 
   const handleRequestSubmitCourse = () => {
     if (!isAdminLoggedIn) {
-      setShowGuidelinesModal(true);
-      showToast(
-        language === 'id'
-          ? 'Submisi publik akan segera hadir. Saat ini kurasi dibatasi untuk tim inti bagiilmu.id.'
-          : 'Public submissions coming soon. Curation is currently limited to the bagiilmu.id core team.'
-      );
+      if (!loggedInUser) {
+        setShowUserAuthModal(true);
+        showToast(
+          language === 'id'
+            ? 'Silakan Masuk atau Daftar Akun terlebih dahulu untuk dapat mengajukan kursus baru!'
+            : 'Please Sign In or Register an account first to submit a new free course!'
+        );
+      } else {
+        setShowSubmissionsModal(true);
+        showToast(
+          language === 'id'
+            ? 'Silakan lengkapi formulir pengajuan kursus gratis Anda. Admin akan meninjau pengajuan ini.'
+            : 'Please complete your free course submission form. Admin will review this submission.'
+        );
+      }
     } else {
       setCurrentView('curator');
     }
@@ -257,6 +398,14 @@ export default function App() {
         return false;
       }
 
+      // Progress status filter
+      if (activeProgressFilter !== 'all') {
+        const userStatus = userCourseProgress[course.id] || 'unstarted';
+        if (userStatus !== activeProgressFilter) {
+          return false;
+        }
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -272,7 +421,7 @@ export default function App() {
 
       return true;
     });
-  }, [courses, activeCategory, selectedPlatform, activeLevelFilter, activeSubFilter, searchQuery]);
+  }, [courses, activeCategory, selectedPlatform, activeLevelFilter, activeSubFilter, searchQuery, activeProgressFilter, userCourseProgress]);
 
   const handleToggleBookmark = (courseId: string) => {
     setBookmarkedIds((prev) => {
@@ -357,11 +506,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070b14] text-white flex flex-col selection:bg-blue-600 selection:text-white">
-      {/* Fixed Navigation Header (Public View) */}
-      {currentView === 'public' && (
+      {/* Fixed Navigation Header (Public & Dashboard Views) */}
+      {currentView !== 'curator' && (
         <Navbar
-          currentView="public"
-          onNavigate={handleNavigate}
+          currentView={currentView}
+          onNavigate={(view) => {
+            if (view === 'admin') {
+              handleNavigate('admin');
+            } else {
+              setCurrentView(view);
+            }
+          }}
           onRequestSubmit={handleRequestSubmitCourse}
           isAdminLoggedIn={isAdminLoggedIn}
           adminUsername={adminUsername}
@@ -376,6 +531,9 @@ export default function App() {
           onOpenBookmarks={() => setShowBookmarksModal(true)}
           onOpenDesignSpecs={() => setShowDesignSpecsModal(true)}
           onOpenSettings={() => setShowSettingsModal(true)}
+          loggedInUser={loggedInUser}
+          onOpenAuth={() => setShowUserAuthModal(true)}
+          onUserLogout={handleUserLogout}
         />
       )}
 
@@ -411,6 +569,30 @@ export default function App() {
           onLogout={handleLogout}
           initialEditingCourse={editingCourseForConsole}
         />
+      ) : currentView === 'dashboard' && loggedInUser ? (
+        /* STUDENT USER DASHBOARD */
+        <UserDashboard
+          loggedInUser={loggedInUser}
+          courses={courses}
+          userCourseProgress={userCourseProgress}
+          onChangeLearningStatus={(courseId, status) => {
+            setUserCourseProgress((prev) => {
+              const updated = { ...prev, [courseId]: status };
+              showToast(
+                language === 'id'
+                  ? 'Status progress belajar berhasil diperbarui!'
+                  : 'Learning progress status updated successfully!'
+              );
+              return updated;
+            });
+          }}
+          bookmarkedIds={bookmarkedIds}
+          onToggleBookmark={handleToggleBookmark}
+          onEnroll={(c) => setSelectedCourseForEnroll(c)}
+          language={language}
+          onBackToCatalog={() => setCurrentView('public')}
+          onUpdateProfile={handleUpdateProfile}
+        />
       ) : (
         /* PUBLIC DIRECTORY & CATALOG */
         <div className="pt-16 flex-1 flex flex-col">
@@ -445,6 +627,8 @@ export default function App() {
             matchCount={filteredCourses.length}
             totalCatalogCount="2.480"
             language={language}
+            activeProgressFilter={activeProgressFilter}
+            onSelectProgressFilter={setActiveProgressFilter}
           />
 
           {/* Catalog Grid Section */}
@@ -503,6 +687,27 @@ export default function App() {
                       onToggleBookmark={handleToggleBookmark}
                       language={language}
                       density={cardDensity}
+                      learningStatus={userCourseProgress[course.id] || 'unstarted'}
+                      onChangeLearningStatus={(courseId, status) => {
+                        if (!loggedInUser) {
+                          setShowUserAuthModal(true);
+                          showToast(
+                            language === 'id'
+                              ? 'Fitur penanda progress belajar hanya dapat diakses setelah masuk sebagai Siswa!'
+                              : 'Learning progress tracking feature is only accessible after logging in as a Student!'
+                          );
+                          return;
+                        }
+                        setUserCourseProgress((prev) => {
+                          const updated = { ...prev, [courseId]: status };
+                          showToast(
+                            language === 'id'
+                              ? 'Status progress belajar berhasil diperbarui!'
+                              : 'Learning progress status updated successfully!'
+                          );
+                          return updated;
+                        });
+                      }}
                     />
                   ))}
                 </div>
@@ -668,75 +873,33 @@ export default function App() {
       )}
 
       {/* Community Submissions Modal */}
-      {showSubmissionsModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#090d16] rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative border border-white/15">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
-                  <span className="material-symbols-outlined text-[20px]">forum</span>
-                </span>
-                <h3 className="text-lg font-black uppercase tracking-tight text-white">
-                  {language === 'id' ? 'Submisi Komunitas' : 'Community Submissions'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowSubmissionsModal(false)}
-                className="text-zinc-400 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-            <div className="space-y-3 mb-6">
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-white">
-                    @budi_dev • freeCodeCamp Next.js 14
-                  </span>
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/30 text-amber-300 font-black uppercase tracking-wider">
-                    {language === 'id' ? 'Dalam Antrean (8 pending)' : 'In Review (8 queued)'}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 italic font-normal">
-                  "Baru saja rilis di channel freeCodeCamp. Sangat bagus untuk yang ingin belajar Server Actions dan PostgreSQL."
-                </p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-white">
-                    @sarah_codes • MIT OCW 6.0001 Python
-                  </span>
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 font-black uppercase tracking-wider">
-                    {language === 'id' ? 'Terverifikasi & Tayang' : 'Verified & Published'}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-300 italic font-normal">
-                  "Silabus resmi dan problem set MIT dapat diunduh gratis tanpa login."
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                onClick={() => setShowSubmissionsModal(false)}
-                className="w-full py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
-              >
-                {language === 'id' ? 'Tutup' : 'Close'}
-              </button>
-              {isAdminLoggedIn && (
-                <button
-                  onClick={() => {
-                    setShowSubmissionsModal(false);
-                    setCurrentView('curator');
-                  }}
-                  className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider cursor-pointer border border-blue-400/30 shadow-md"
-                >
-                  {language === 'id' ? 'Buka Curator Hub' : 'Open Curator Hub'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CommunitySubmissionModal
+        isOpen={showSubmissionsModal}
+        onClose={() => setShowSubmissionsModal(false)}
+        defaultAuthor={loggedInUser?.fullName || loggedInUser?.username || ''}
+        onSubmit={async (submission) => {
+          const submissionPayload = {
+            ...submission,
+            status: 'pending' as const,
+            submittedTime: 'Baru saja'
+          };
+          await addPendingSubmissionToFirestore(submissionPayload);
+          showToast(
+            language === 'id' 
+              ? 'Terima kasih! Pengajuan Anda berhasil dikirim ke antrean review Admin.' 
+              : 'Thank you! Your submission has been successfully sent to the Admin review queue.'
+          );
+          setShowSubmissionsModal(false);
+        }}
+      />
+
+      {/* User Authentication Modal (Login/Register) */}
+      <UserAuthModal
+        isOpen={showUserAuthModal}
+        onClose={() => setShowUserAuthModal(false)}
+        onAuthSuccess={handleUserAuthSuccess}
+        language={language}
+      />
     </div>
   );
 }

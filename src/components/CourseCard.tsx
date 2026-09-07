@@ -1,5 +1,5 @@
-import React from 'react';
-import { Course } from '../types';
+import React, { useState } from 'react';
+import { Course, CourseLearningStatus } from '../types';
 import { Language, translations } from '../lib/i18n';
 
 interface CourseCardProps {
@@ -11,6 +11,8 @@ interface CourseCardProps {
   onToggleBookmark?: (courseId: string) => void;
   language: Language;
   density?: 'comfortable' | 'compact';
+  learningStatus?: CourseLearningStatus;
+  onChangeLearningStatus?: (courseId: string, status: CourseLearningStatus) => void;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -22,8 +24,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onToggleBookmark,
   language,
   density = 'comfortable',
+  learningStatus = 'unstarted',
+  onChangeLearningStatus,
 }) => {
   const t = translations[language];
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Dot color by provider platform
   const getProviderDotColor = (provider: string) => {
@@ -158,8 +163,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-[120px]">
             <button
               onClick={() => onEnroll(course)}
               className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-xs sm:text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer min-h-[44px] px-2 rounded-lg hover:bg-blue-500/10 active:scale-95"
@@ -168,6 +173,94 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <span className="material-symbols-outlined text-[18px]">open_in_new</span>
             </button>
           </div>
+
+          {onChangeLearningStatus && (
+            <div className="relative flex items-center gap-1.5 shrink-0">
+              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider hidden xs:inline">Status:</span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border focus:outline-none transition-all cursor-pointer min-h-[34px] flex items-center gap-1.5 ${
+                    learningStatus === 'completed'
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                      : learningStatus === 'in_progress'
+                      ? 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                      : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                  }`}
+                >
+                  <span>
+                    {learningStatus === 'completed'
+                      ? 'Selesai'
+                      : learningStatus === 'in_progress'
+                      ? 'Sedang Belajar'
+                      : 'Belum Mulai'}
+                  </span>
+                  <span className="material-symbols-outlined text-[14px]">
+                    {isDropdownOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+
+                {isDropdownOpen && (
+                  <>
+                    {/* Backdrop to close click */}
+                    <div className="fixed inset-0 z-10 cursor-default" onClick={() => setIsDropdownOpen(false)} />
+                    
+                    <div className="absolute right-0 bottom-full mb-1.5 w-36 bg-[#0c1221] border border-white/15 rounded-xl py-1.5 shadow-2xl z-20 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChangeLearningStatus(course.id, 'unstarted');
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5 transition-colors cursor-pointer ${
+                          learningStatus === 'unstarted'
+                            ? 'text-white bg-white/10 font-black'
+                            : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                        <span>Belum Mulai</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChangeLearningStatus(course.id, 'in_progress');
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5 transition-colors cursor-pointer ${
+                          learningStatus === 'in_progress'
+                            ? 'text-amber-300 bg-amber-500/10 font-black'
+                            : 'text-zinc-400 hover:text-amber-300 hover:bg-amber-500/5'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <span>Sedang Belajar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChangeLearningStatus(course.id, 'completed');
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5 transition-colors cursor-pointer ${
+                          learningStatus === 'completed'
+                            ? 'text-emerald-300 bg-emerald-500/10 font-black'
+                            : 'text-zinc-400 hover:text-emerald-300 hover:bg-emerald-500/5'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>Selesai</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
           <div className="flex items-center gap-2">
             {onToggleBookmark && (
@@ -215,7 +308,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             )}
           </div>
         </div>
-      </div>
     </article>
   );
 };

@@ -40,6 +40,35 @@ export interface Course {
 
 export type SubFilter = 'all' | 'cert_only' | 'top_rated';
 
+export type CourseLearningStatus = 'unstarted' | 'in_progress' | 'completed';
+
+export type UserCourseProgressMap = Record<string, CourseLearningStatus>;
+
+export interface PendingSubmission {
+  id: string;
+  author: string;
+  authorRole: string;
+  avatar: string;
+  submittedTime: string;
+  note: string;
+  title: string;
+  provider: string;
+  platform: string;
+  url: string;
+  category: Category;
+  categoryLabel: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
+  duration: string;
+  hasCertificate: boolean;
+  accessTier: 'free_cert' | 'audit_only' | 'oer';
+  accessBadgeText: string;
+  description: string;
+  skills: string[];
+  status: 'pending' | 'approved' | 'rejected';
+  image?: string;
+  createdAt?: string;
+}
+
 export interface CuratorFormData {
   title: string;
   platform: string;

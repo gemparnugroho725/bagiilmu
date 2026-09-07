@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { BrandLogo } from './BrandLogo';
 import { Language, translations } from '../lib/i18n';
+import { UserAvatar } from './UserAvatar';
 
 interface NavbarProps {
-  currentView: 'public' | 'admin';
-  onNavigate: (view: 'public' | 'admin') => void;
+  currentView: 'public' | 'admin' | 'dashboard' | 'curator';
+  onNavigate: (view: 'public' | 'admin' | 'dashboard' | 'curator') => void;
   onRequestSubmit?: () => void;
   onSearchFocus?: () => void;
   onFilterCategory?: (cat: string) => void;
@@ -17,6 +18,9 @@ interface NavbarProps {
   onOpenBookmarks?: () => void;
   onOpenDesignSpecs?: () => void;
   onOpenSettings?: () => void;
+  loggedInUser?: { username: string; email?: string; fullName?: string; avatarType?: 'initials' | 'character' | 'custom'; characterId?: 'wizard' | 'explorer' | 'analyst' | 'guardian' | 'artist'; avatarUrl?: string } | null;
+  onOpenAuth?: () => void;
+  onUserLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,6 +37,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBookmarks,
   onOpenDesignSpecs,
   onOpenSettings,
+  loggedInUser = null,
+  onOpenAuth,
+  onUserLogout,
 }) => {
   const t = translations[language];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -53,12 +60,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="group focus:outline-none text-left cursor-pointer min-h-[44px] flex items-center"
               title="bagiilmu.id - Beranda"
             >
-              <BrandLogo size="md" />
+              <BrandLogo size="md" showHubBadge={true} />
             </button>
-            
-            <span className="hidden xl:inline-flex items-center rounded-full bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-300">
-              {t.brand.verifiedBadge}
-            </span>
           </div>
 
           {/* Center Nav Links (Desktop & Tablet Wide) */}
@@ -110,6 +113,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden lg:inline">{t.nav.designSpecs}</span>
               <span className="lg:hidden">Specs</span>
             </button>
+
+            {/* Community Submission Button */}
+            {onRequestSubmit && (
+              <button
+                onClick={onRequestSubmit}
+                className="min-h-[44px] flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-300 hover:text-white transition-all cursor-pointer px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/35 hover:border-amber-400 hover:scale-[1.03]"
+                title={language === 'id' ? 'Ajukan Kursus Baru' : 'Submit a Free Course'}
+              >
+                <span className="material-symbols-outlined text-[18px]">volunteer_activism</span>
+                <span>{language === 'id' ? 'Ajukan Kursus' : 'Submit Course'}</span>
+              </button>
+            )}
           </nav>
 
           {/* Right CTA Actions: Language Switcher + Bookmarks + Settings + Mobile Hamburger */}
@@ -172,6 +187,47 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title={t.nav.settings}
               >
                 <span className="material-symbols-outlined text-[20px]">settings</span>
+              </button>
+            )}
+
+            {/* User Auth Controls / Button */}
+            {loggedInUser ? (
+              <div className="hidden sm:flex items-center gap-1.5 pl-1.5 border-l border-white/10">
+                <button
+                  onClick={() => onNavigate('dashboard')}
+                  className={`flex items-center gap-2 pl-2 pr-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer min-h-[36px] border ${
+                    currentView === 'dashboard'
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-300 hover:text-white hover:scale-[1.02]'
+                  }`}
+                  title="Buka Dashboard Belajar Saya"
+                >
+                  <UserAvatar
+                    username={loggedInUser.username}
+                    fullName={loggedInUser.fullName}
+                    avatarType={loggedInUser.avatarType}
+                    characterId={loggedInUser.characterId as any}
+                    avatarUrl={loggedInUser.avatarUrl}
+                    size="xs"
+                  />
+                  <span>Dashboard</span>
+                </button>
+                <button
+                  onClick={onUserLogout}
+                  className="p-2 rounded-full bg-red-950/20 hover:bg-red-900/40 border border-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  title="Keluar Akun / Logout"
+                >
+                  <span className="material-symbols-outlined text-[18px]">logout</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 border border-blue-500/35 hover:scale-[1.02] text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer min-h-[36px]"
+                title="Masuk / Daftar Akun"
+              >
+                <span className="material-symbols-outlined text-[16px]">person</span>
+                <span>Masuk</span>
               </button>
             )}
 
@@ -269,6 +325,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>{t.nav.designSpecs}</span>
               </button>
 
+              {onRequestSubmit && (
+                <button
+                  onClick={() => {
+                    closeMobileMenu();
+                    onRequestSubmit();
+                  }}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/15 text-amber-300 font-black text-xs uppercase tracking-wider border border-amber-500/30 text-left cursor-pointer min-h-[48px]"
+                >
+                  <span className="material-symbols-outlined text-amber-400 text-[20px]">volunteer_activism</span>
+                  <span>{language === 'id' ? 'Ajukan Kursus Baru' : 'Submit Course'}</span>
+                </button>
+              )}
+
               {onOpenSettings && (
                 <button
                   onClick={() => {
@@ -279,6 +348,68 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <span className="material-symbols-outlined text-[20px]">settings</span>
                   <span>{t.nav.settings}</span>
+                </button>
+              )}
+
+              {/* Mobile User Auth Controls */}
+              {loggedInUser ? (
+                <div className="flex flex-col gap-2.5 p-4 rounded-2xl bg-[#090d16] border border-emerald-500/20 text-white shadow-xl">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                    <div className="flex items-center gap-2.5">
+                      <UserAvatar
+                        username={loggedInUser.username}
+                        fullName={loggedInUser.fullName}
+                        avatarType={loggedInUser.avatarType}
+                        characterId={loggedInUser.characterId as any}
+                        avatarUrl={loggedInUser.avatarUrl}
+                        size="xs"
+                      />
+                      <div className="text-left">
+                        <div className="text-xs font-black uppercase tracking-wider text-emerald-300 font-mono">@{loggedInUser.username}</div>
+                        <div className="text-[10px] text-zinc-400 font-bold leading-none">{loggedInUser.fullName}</div>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[9px] font-mono tracking-wider uppercase text-emerald-400">
+                      Siswa
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      closeMobileMenu();
+                      onNavigate('dashboard');
+                    }}
+                    className={`w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer border ${
+                      currentView === 'dashboard'
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                    <span>Dashboard Saya</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      closeMobileMenu();
+                      onUserLogout?.();
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-red-950/20 hover:bg-red-900/40 border border-red-500/15 text-red-400 hover:text-red-300 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">logout</span>
+                    <span>Keluar Akun</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    closeMobileMenu();
+                    onOpenAuth?.();
+                  }}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider border border-blue-500/30 text-left cursor-pointer min-h-[48px]"
+                >
+                  <span className="material-symbols-outlined text-[20px]">login</span>
+                  <span>Masuk / Daftar Akun</span>
                 </button>
               )}
             </nav>
